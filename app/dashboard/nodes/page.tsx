@@ -50,6 +50,59 @@ export default function NodesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const translations = {
+    addModalTitle: { id: 'Tambah Node Baru', en: 'Add New Node' },
+    addModalDescription: { id: 'Masukkan detail untuk node server baru.', en: 'Enter the details for the new server node.' },
+    labelName: { id: 'Nama', en: 'Name' },
+    labelIpAddress: { id: 'IP Address', en: 'IP Address' },
+    labelLocation: { id: 'Lokasi', en: 'Location' },
+    buttonCancel: { id: 'Batal', en: 'Cancel' },
+    buttonAdd: { id: 'Tambah Node', en: 'Add Node' },
+    buttonSave: { id: 'Simpan', en: 'Save' },
+    buttonCancelEdit: { id: 'Batal', en: 'Cancel' },
+  };
+  const [currentLang, setCurrentLang] = useState('id'); // Default: Indonesia
+
+// GANTI useEffect LAMA YANG MENGGUNAKAN MutationObserver DENGAN YANG INI
+
+useEffect(() => {
+  // 1. Cari elemen pembungkus GTranslate
+  const wrapper = document.querySelector('.gtranslate_wrapper');
+
+  // 2. Buat fungsi yang akan dijalankan setiap kali ada klik di dalam wrapper
+  const handleLanguageChange = (event: Event) => {
+    const target = event.target as HTMLElement;
+
+    // 3. Cek apakah yang diklik (atau elemen induknya) adalah link bahasa
+    const langLink = target.closest('a[data-gt-lang]');
+
+    if (langLink) {
+      const lang = langLink.getAttribute('data-gt-lang');
+      if (lang) {
+        console.log(`Bahasa diubah ke: ${lang}`); // <-- Tambahkan ini untuk debugging di console browser
+        setCurrentLang(lang);
+      }
+    }
+  };
+
+  // 4. Pasang "pendengar" ke wrapper
+  if (wrapper) {
+    wrapper.addEventListener('click', handleLanguageChange);
+  }
+
+  // 5. Fungsi cleanup: Penting untuk menghapus "pendengar" saat komponen tidak lagi digunakan
+  return () => {
+    if (wrapper) {
+      wrapper.removeEventListener('click', handleLanguageChange);
+    }
+  };
+}, []); // <-- Array dependensi kosong, berarti hanya berjalan sekali saat komponen pertama kali muncul
+
+  // 4. Fungsi helper 't' untuk mengambil terjemahan
+  const t = useCallback((key: keyof typeof translations) => {
+    return translations[key][currentLang as keyof typeof translations[typeof key]] || translations[key]['id'];
+  }, [currentLang, translations]);
+
   const fetchNodes = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -129,14 +182,14 @@ export default function NodesPage() {
     }
   };
 
-  const startEditing = (node: Node) => {
-    setEditingNodeId(node.id);
-    setEditedNode({
-      name: node.name,
-      ip: node.ip,
-      location: node.location ?? "",
-    });
-  };
+const startEditing = (node: Node) => {
+  setEditingNodeId(node.id);
+  setEditedNode({
+    name: node.name,
+    ip: node.ip,
+    location: node.location ?? "",
+  });
+};
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -204,8 +257,8 @@ export default function NodesPage() {
 
   const handleDeleteNode = async (id: string) => {
     toast({
-      title: "Confirm Deletion",
-      description: "Are you sure you want to delete this node? This action cannot be undone.",
+      title: "Konfirmasi penghapusan",
+      description: "Apakah Anda yakin ingin menghapus node ini? Tindakan ini tidak dapat dibatalkan.",
       variant: "destructive",
       action: (
         <Button
@@ -248,7 +301,7 @@ export default function NodesPage() {
             }
           }}
         >
-          Yes, Delete
+          Ya, Hapus
         </Button>
       ),
     });
@@ -259,7 +312,7 @@ export default function NodesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Nodes</h1>
-          <p className="text-gray-600">Manage your OpenVPN server nodes</p>
+          <p className="text-gray-600">Kelola node server OpenVPN Anda</p>
         </div>
         <Button onClick={() => setIsAddModalOpen(true)} disabled={isSubmitting}>
           {isSubmitting ? (
@@ -267,7 +320,7 @@ export default function NodesPage() {
           ) : (
             <Plus className="h-4 w-4 mr-2" />
           )}
-          Add Node
+          Tambah Node
         </Button>
       </div>
 
@@ -286,14 +339,14 @@ export default function NodesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Nama</TableHead>
                     <TableHead>IP Address</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead>Lokasi</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>CPU Usage</TableHead>
-                    <TableHead>RAM Usage</TableHead>
-                    <TableHead>Last Seen</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Pemakaian CPU</TableHead>
+                    <TableHead>Pemakaian RAM</TableHead>
+                    <TableHead>Terakhir di lihat</TableHead>
+                    <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -303,7 +356,7 @@ export default function NodesPage() {
                         colSpan={8}
                         className="text-center py-8 text-gray-500"
                       >
-                        No nodes found. Add a new node to get started!
+                        Tidak ditemukan node. Tambahkan node baru untuk memulai!
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -315,11 +368,11 @@ export default function NodesPage() {
                               name="name"
                               value={editedNode?.name || ""}
                               onChange={handleEditChange}
-                              className="w-full"
+                              className="w-full notranslate"
                               disabled={isSubmitting}
                             />
                           ) : (
-                            node.name
+                            <p className="notranslate">{node.name}</p>
                           )}
                         </TableCell>
                         <TableCell>
@@ -348,7 +401,7 @@ export default function NodesPage() {
                             node.location
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="notranslate">
                           <Badge
                             variant={
                               node.status === NodeStatus.ONLINE
@@ -426,7 +479,7 @@ export default function NodesPage() {
                                 ) : (
                                   <Save className="h-4 w-4" />
                                 )}
-                                <span className="ml-1">Save</span>
+                                <span className="ml-1 notranslate">{t('buttonSave')}</span>
                               </Button>
                               <Button
                                 variant="outline"
@@ -436,7 +489,7 @@ export default function NodesPage() {
                                 type="button"
                               >
                                 <X className="h-4 w-4" />
-                                <span className="ml-1">Cancel</span>
+                                <span className="ml-1 notranslate">{t('buttonCancelEdit')}</span>
                               </Button>
                             </div>
                           ) : (
@@ -459,7 +512,7 @@ export default function NodesPage() {
                                 type="button"
                               >
                                 <Trash2 className="h-4 w-4" />
-                                <span className="ml-1">Delete</span>
+                                <span className="ml-1">Hapus</span>
                               </Button>
                               <NodeCopyButton nodeId={node.id} />
                             </div>
@@ -479,17 +532,13 @@ export default function NodesPage() {
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Add New Node</DialogTitle>
-            <DialogDescription>
-              Enter the details for the new server node.
-            </DialogDescription>
+            <DialogTitle className="notranslate">{t('addModalTitle')}</DialogTitle>
+<DialogDescription className="notranslate">{t('addModalDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddNode}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
+<Label htmlFor="name" className="text-right notranslate">{t('labelName')}</Label>
                 <Input
                   id="name"
                   name="name"
@@ -502,9 +551,7 @@ export default function NodesPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="ip" className="text-right">
-                  IP Address
-                </Label>
+<Label htmlFor="ip" className="text-right notranslate">{t('labelIpAddress')}</Label>
                 <Input
                   id="ip"
                   name="ip"
@@ -517,9 +564,7 @@ export default function NodesPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="location" className="text-right">
-                  Location
-                </Label>
+<Label htmlFor="location" className="text-right notranslate">{t('labelLocation')}</Label>
                 <Input
                   id="location"
                   name="location"
@@ -539,14 +584,12 @@ export default function NodesPage() {
                 disabled={isSubmitting}
                 type="button"
               >
-                Cancel
+                {t('buttonCancel')}
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Add Node
-              </Button>
+<Button onClick={() => setIsAddModalOpen(true)} disabled={isSubmitting}>
+  <Plus className="h-4 w-4 mr-2" />
+  {t('buttonAdd')}
+</Button>
             </DialogFooter>
           </form>
         </DialogContent>

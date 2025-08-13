@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 type Props = {
   onNodeAdded: () => void
@@ -51,17 +51,17 @@ export function AddNodeModal({ onNodeAdded }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          + Add Node
+          + Tambahkan Node
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Node</DialogTitle>
+          <DialogTitle>Tambah Node baru</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <Input
-            placeholder="Node Name"
+            placeholder="Nama Node"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -71,7 +71,7 @@ export function AddNodeModal({ onNodeAdded }: Props) {
             onChange={(e) => setIpAddress(e.target.value)}
           />
           <Input
-            placeholder="Location (optional)"
+            placeholder="Lokasi"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
@@ -79,7 +79,7 @@ export function AddNodeModal({ onNodeAdded }: Props) {
 
         <DialogFooter className="mt-4">
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Adding..." : "Add Node"}
+            {loading ? "Menambahkan..." : "Tambah node"}
           </Button>
         </DialogFooter>
       </DialogContent>

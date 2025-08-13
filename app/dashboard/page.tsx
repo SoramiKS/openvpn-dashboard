@@ -76,8 +76,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
-        <p className="text-gray-600">Monitor your OpenVPN infrastructure at a glance</p>
+        <h1 className="text-3xl font-bold text-gray-900">Ringkasan</h1>
+        <p className="text-gray-600">Pantau infrastruktur OpenVPN Anda dengan cepat dan mudah</p>
       </div>
 
       {isLoading ? (
@@ -122,7 +122,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
+                <CardTitle className="text-sm font-medium">Sesi Aktif</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -135,7 +135,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Status</CardTitle>
+                <CardTitle className="text-sm font-medium">Status Sistem</CardTitle>
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Resource Usage (Online Nodes)</CardTitle>
+                <CardTitle>Penggunaan Sumber Daya (Node Online)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -214,6 +214,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+            
           </div>
         </>
       )}

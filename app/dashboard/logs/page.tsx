@@ -85,8 +85,8 @@ export default function LogsPage() {
     <div className="space-y-6 p-6"> {/* Tambahkan padding */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Logs</h1>
-          <p className="text-gray-600">Monitor system events and activities</p>
+          <h1 className="text-3xl font-bold text-gray-900">Logs Sistem</h1>
+          <p className="text-gray-600">Memantau event dan aktivitas sistem</p>
         </div>
         <div className="flex space-x-2">
           {/* Tombol Filter (belum fungsional, hanya placeholder) */}
@@ -120,11 +120,11 @@ export default function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Tanggal dan Waktu</TableHead>
                   <TableHead>Node</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Aksi</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>User/Details</TableHead> {/* Gabungkan User dan Details */}
+                  <TableHead>Pengguna/Rincian</TableHead> {/* Gabungkan User dan Details */}
                 </TableRow>
               </TableHeader>
               <TableBody>

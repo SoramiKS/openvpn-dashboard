@@ -52,7 +52,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-3xl font-extrabold text-gray-800">OpenVPN Manager</CardTitle>
           <CardDescription className="text-gray-600 mt-2">
-            Sign in to your account to manage your VPN infrastructure
+            Masuk ke akun Anda untuk mengelola VPN Anda.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 bg-white">

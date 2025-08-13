@@ -54,6 +54,51 @@ export default function VpnProfilesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+    // 1. Buat kamus hanya untuk teks di dalam dialog
+  const translations = useMemo(() => ({
+    modalTitle: { id: 'Buat Profil VPN Baru', en: 'Create New VPN Profile' },
+    modalDescription: { id: 'Masukkan nama pengguna dan pilih node untuk profil VPN baru.', en: 'Enter a username and select a node for the new VPN profile.' },
+    labelUsername: { id: 'Nama Pengguna', en: 'Username' },
+    labelNode: { id: 'Node yang Ditugaskan', en: 'Assigned Node' },
+    selectNodePlaceholder: { id: 'Pilih Node', en: 'Select a Node' },
+    noNodesAvailable: { id: 'Tidak ada node tersedia', en: 'No nodes available' },
+    buttonCancel: { id: 'Batal', en: 'Cancel' },
+    buttonCreate: { id: 'Buat Profil', en: 'Create Profile' },
+  }), []);
+
+  // 2. State untuk menyimpan bahasa aktif
+  const [currentLang, setCurrentLang] = useState('id');
+
+  // 3. useEffect untuk mendeteksi perubahan bahasa dari GTranslate
+  useEffect(() => {
+    const wrapper = document.querySelector('.gtranslate_wrapper');
+    const handleLanguageChange = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const langLink = target.closest('a[data-gt-lang]');
+      if (langLink) {
+        const lang = langLink.getAttribute('data-gt-lang');
+        if (lang) {
+          setCurrentLang(lang);
+        }
+      }
+    };
+
+    if (wrapper) {
+      wrapper.addEventListener('click', handleLanguageChange);
+    }
+    return () => {
+      if (wrapper) {
+        wrapper.removeEventListener('click', handleLanguageChange);
+      }
+    };
+  }, []);
+
+  // 4. Fungsi helper 't' untuk mengambil terjemahan
+  const t = useCallback((key: keyof typeof translations) => {
+    const lang = currentLang as keyof typeof translations[typeof key];
+    return translations[key][lang] || translations[key]['id'];
+  }, [currentLang, translations]);
+
   // Fungsi untuk mengambil data profil VPN dari API
   const fetchVpnUsers = useCallback(async () => {
     setIsLoading(true);
@@ -447,51 +492,49 @@ export default function VpnProfilesPage() {
         "Daftar Profil Pengguna Dicabut/Kadaluarsa",
         "Tidak ada profil VPN dicabut atau kadaluarsa ditemukan."
       )}
-      {/* Dialog Tambah Profil VPN */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Buat Profil VPN Baru</DialogTitle>
-            <DialogDescription>
-              Masukkan nama pengguna dan pilih node untuk profil VPN baru.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Nama Pengguna
-              </Label>
-              <Input
-                id="username"
-                name="username"
-                value={newProfile.username}
-                onChange={(e) =>
-                  setNewProfile({ ...newProfile, username: e.target.value })
-                }
-                className="col-span-3"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="node" className="text-right">
-                Node yang Ditugaskan
-              </Label>
-              <Select
-                value={newProfile.nodeId}
-                onValueChange={(value) =>
-                  setNewProfile({ ...newProfile, nodeId: value })
-                }
-                disabled={isSubmitting || nodes.length === 0}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={
-                      nodes.length > 0
-                        ? "Pilih Node"
-                        : "Tidak ada node tersedia"
-                    }
-                  />
-                </SelectTrigger>
+{/* Dialog Tambah Profil VPN */}
+<Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+  <DialogContent className="sm:max-w-[425px]">
+    <DialogHeader>
+      <DialogTitle className="notranslate">{t('modalTitle')}</DialogTitle>
+      <DialogDescription className="notranslate">{t('modalDescription')}</DialogDescription>
+    </DialogHeader>
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="username" className="text-right notranslate">
+          {t('labelUsername')}
+        </Label>
+        <Input
+          id="username"
+          name="username"
+          value={newProfile.username}
+          onChange={(e) =>
+            setNewProfile({ ...newProfile, username: e.target.value })
+          }
+          className="col-span-3"
+          disabled={isSubmitting}
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="node" className="text-right notranslate">
+          {t('labelNode')}
+        </Label>
+        <Select
+          value={newProfile.nodeId}
+          onValueChange={(value) =>
+            setNewProfile({ ...newProfile, nodeId: value })
+          }
+          disabled={isSubmitting || nodes.length === 0}
+        >
+          <SelectTrigger className="col-span-3 notranslate">
+            <SelectValue
+              placeholder={
+                nodes.length > 0
+                  ? t('selectNodePlaceholder')
+                  : t('noNodesAvailable')
+              }
+            />
+          </SelectTrigger>
                 <SelectContent>
                   {nodes.length === 0 ? (
                     <SelectItem value="no-nodes" disabled>
@@ -500,7 +543,7 @@ export default function VpnProfilesPage() {
                     </SelectItem>
                   ) : (
                     nodes.map((node) => (
-                      <SelectItem key={node.id} value={node.id}>
+                      <SelectItem className="notranslate" key={node.id} value={node.id}>
                         {node.name}
                       </SelectItem>
                     ))
