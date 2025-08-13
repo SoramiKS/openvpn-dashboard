@@ -3,7 +3,6 @@
 import { ActionType, ActionStatus } from '@/lib/generated/prisma';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma'; // Using global PrismaClient instance
-import { Prisma } from '@prisma/client'; // Import Prisma namespace to use JsonValue type
 
 interface CreateProfileRequestBody {
   username: string;

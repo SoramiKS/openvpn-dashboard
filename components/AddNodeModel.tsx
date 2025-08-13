@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 type Props = {
   onNodeAdded: () => void

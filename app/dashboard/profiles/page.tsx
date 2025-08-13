@@ -1,7 +1,6 @@
-// app/vpn-profiles/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react"; // Import useMemo
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,50 +53,9 @@ export default function VpnProfilesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-    // 1. Buat kamus hanya untuk teks di dalam dialog
-  const translations = useMemo(() => ({
-    modalTitle: { id: 'Buat Profil VPN Baru', en: 'Create New VPN Profile' },
-    modalDescription: { id: 'Masukkan nama pengguna dan pilih node untuk profil VPN baru.', en: 'Enter a username and select a node for the new VPN profile.' },
-    labelUsername: { id: 'Nama Pengguna', en: 'Username' },
-    labelNode: { id: 'Node yang Ditugaskan', en: 'Assigned Node' },
-    selectNodePlaceholder: { id: 'Pilih Node', en: 'Select a Node' },
-    noNodesAvailable: { id: 'Tidak ada node tersedia', en: 'No nodes available' },
-    buttonCancel: { id: 'Batal', en: 'Cancel' },
-    buttonCreate: { id: 'Buat Profil', en: 'Create Profile' },
-  }), []);
-
-  // 2. State untuk menyimpan bahasa aktif
-  const [currentLang, setCurrentLang] = useState('id');
-
-  // 3. useEffect untuk mendeteksi perubahan bahasa dari GTranslate
-  useEffect(() => {
-    const wrapper = document.querySelector('.gtranslate_wrapper');
-    const handleLanguageChange = (event: Event) => {
-      const target = event.target as HTMLElement;
-      const langLink = target.closest('a[data-gt-lang]');
-      if (langLink) {
-        const lang = langLink.getAttribute('data-gt-lang');
-        if (lang) {
-          setCurrentLang(lang);
-        }
-      }
-    };
-
-    if (wrapper) {
-      wrapper.addEventListener('click', handleLanguageChange);
-    }
-    return () => {
-      if (wrapper) {
-        wrapper.removeEventListener('click', handleLanguageChange);
-      }
-    };
-  }, []);
-
-  // 4. Fungsi helper 't' untuk mengambil terjemahan
-  const t = useCallback((key: keyof typeof translations) => {
-    const lang = currentLang as keyof typeof translations[typeof key];
-    return translations[key][lang] || translations[key]['id'];
-  }, [currentLang, translations]);
+  // State untuk dialog konfirmasi pencabutan
+  const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
+  const [userToRevoke, setUserToRevoke] = useState<{ id: string, username: string } | null>(null);
 
   // Fungsi untuk mengambil data profil VPN dari API
   const fetchVpnUsers = useCallback(async () => {
@@ -146,12 +104,12 @@ export default function VpnProfilesPage() {
     } catch (error: unknown) {
       console.error("Gagal mengambil node untuk pilihan:", error);
       if (error instanceof Error) {
-      toast({
-        title: "Error",
-        description:
-          error.message || "Gagal memuat node untuk pembuatan profil.",
-        variant: "destructive",
-      });
+        toast({
+          title: "Error",
+          description:
+            error.message || "Gagal memuat node untuk pembuatan profil.",
+          variant: "destructive",
+        });
       }
     }
   }, [toast]);
@@ -162,9 +120,8 @@ export default function VpnProfilesPage() {
     fetchNodesForSelect();
 
     // Auto-refresh profil setiap 15 detik untuk update status koneksi
-    // Anda bisa mengaktifkan kembali ini jika ingin auto-refresh
-    // const interval = setInterval(fetchVpnUsers, 15000);
-    // return () => clearInterval(interval); // Cleanup interval saat komponen unmount
+    const interval = setInterval(fetchVpnUsers, 15000);
+    return () => clearInterval(interval); // Cleanup interval saat komponen unmount
   }, [fetchVpnUsers, fetchNodesForSelect]);
 
   // Memisahkan vpnUsers menjadi valid dan revoked menggunakan useMemo
@@ -190,7 +147,7 @@ export default function VpnProfilesPage() {
     if (!newProfile.username.trim() || !newProfile.nodeId) {
       toast({
         title: "Kesalahan Input",
-        description: "Nama Profil dan Node wajib diisi.",
+        description: "Nama Pengguna dan Node wajib diisi.",
         variant: "destructive",
       });
       return;
@@ -201,7 +158,10 @@ export default function VpnProfilesPage() {
       const response = await fetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newProfile),
+        body: JSON.stringify({
+          username: newProfile.username,
+          nodeId: newProfile.nodeId,
+        }),
       });
 
       if (!response.ok) {
@@ -215,8 +175,6 @@ export default function VpnProfilesPage() {
       });
       setNewProfile({ username: "", nodeId: "" }); // Reset form
       setIsAddModalOpen(false); // Tutup modal
-      // Tidak perlu fetchVpnUsers() di sini, karena agen akan melaporkan statusnya
-      // dan auto-refresh akan mengambilnya.
     } catch (error: unknown) {
       console.error("Error membuat profil VPN:", error);
       if (error instanceof Error) {
@@ -227,25 +185,24 @@ export default function VpnProfilesPage() {
           variant: "destructive",
         });
       }
-      
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Fungsi untuk menampilkan modal konfirmasi pencabutan
+  const handleRevokeClick = (user: { id: string, username: string }) => {
+    setUserToRevoke(user);
+    setIsRevokeModalOpen(true);
+  };
+
   // Fungsi untuk menangani pencabutan profil VPN
-  const handleRevokeProfile = async (id: string, username: string) => {
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin mencabut profil VPN untuk ${username}?`
-      )
-    ) {
-      return;
-    }
+  const handleConfirmRevoke = async () => {
+    if (!userToRevoke) return;
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/profiles/${id}/revoke`, {
+      const response = await fetch(`/api/profiles/${userToRevoke.id}/revoke`, {
         method: "POST",
       });
 
@@ -256,20 +213,23 @@ export default function VpnProfilesPage() {
 
       toast({
         title: "Berhasil",
-        description: `Pencabutan profil VPN untuk ${username} berhasil dimulai!`,
+        description: `Pencabutan profil VPN untuk ${userToRevoke.username} berhasil dimulai!`,
       });
-      // Tidak perlu fetchVpnUsers() di sini, karena agen akan melaporkan statusnya
-      // dan auto-refresh akan mengambilnya.
+      // Tutup modal dan reset state
+      setIsRevokeModalOpen(false);
+      setUserToRevoke(null);
+      // Refresh data
+      fetchVpnUsers();
     } catch (error: unknown) {
       console.error("Error mencabut profil VPN:", error);
       if (error instanceof Error) {
-      toast({
-        title: "Error",
-        description:
-          error.message || "Gagal mencabut profil VPN. Silakan coba lagi.",
-        variant: "destructive",
-      });
-    }
+        toast({
+          title: "Error",
+          description:
+            error.message || "Gagal mencabut profil VPN. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -438,9 +398,7 @@ export default function VpnProfilesPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() =>
-                              handleRevokeProfile(user.id, user.username)
-                            }
+                            onClick={() => handleRevokeClick(user)}
                             disabled={isSubmitting}
                           >
                             {isSubmitting ? (
@@ -462,7 +420,6 @@ export default function VpnProfilesPage() {
       </CardContent>
     </Card>
   );
-
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -479,62 +436,68 @@ export default function VpnProfilesPage() {
           Buat Profil
         </Button>
       </div>
+      
       {/* Tabel untuk Profil Pengguna Aktif/Valid */}
       {renderProfileTable(
         validUsers,
         "Daftar Profil Pengguna Aktif",
         "Tidak ada profil VPN aktif ditemukan. Buat profil baru untuk memulai!"
       )}
+      
       <div className="pt-8"></div> {/* Spacer antara dua tabel */}
+      
       {/* Tabel untuk Profil Pengguna Dicabut/Kadaluarsa */}
       {renderProfileTable(
         revokedUsers,
         "Daftar Profil Pengguna Dicabut/Kadaluarsa",
         "Tidak ada profil VPN dicabut atau kadaluarsa ditemukan."
       )}
-{/* Dialog Tambah Profil VPN */}
-<Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-  <DialogContent className="sm:max-w-[425px]">
-    <DialogHeader>
-      <DialogTitle className="notranslate">{t('modalTitle')}</DialogTitle>
-      <DialogDescription className="notranslate">{t('modalDescription')}</DialogDescription>
-    </DialogHeader>
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="username" className="text-right notranslate">
-          {t('labelUsername')}
-        </Label>
-        <Input
-          id="username"
-          name="username"
-          value={newProfile.username}
-          onChange={(e) =>
-            setNewProfile({ ...newProfile, username: e.target.value })
-          }
-          className="col-span-3"
-          disabled={isSubmitting}
-        />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="node" className="text-right notranslate">
-          {t('labelNode')}
-        </Label>
-        <Select
-          value={newProfile.nodeId}
-          onValueChange={(value) =>
-            setNewProfile({ ...newProfile, nodeId: value })
-          }
-          disabled={isSubmitting || nodes.length === 0}
-        >
-          <SelectTrigger className="col-span-3 notranslate">
-            <SelectValue
-              placeholder={
-                nodes.length > 0
-                  ? t('selectNodePlaceholder')
-                  : t('noNodesAvailable')
-              }
-            />
-          </SelectTrigger>
+      
+      {/* Dialog Tambah Profil VPN */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Buat Profil VPN Baru</DialogTitle>
+            <DialogDescription>
+              Masukkan nama pengguna dan pilih node untuk profil VPN baru.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="username" className="text-right">
+                Nama Pengguna
+              </Label>
+              <Input
+                id="username"
+                name="username"
+                value={newProfile.username}
+                onChange={(e) =>
+                  setNewProfile({ ...newProfile, username: e.target.value })
+                }
+                className="col-span-3"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="node" className="text-right">
+                Node yang Ditugaskan
+              </Label>
+              <Select
+                value={newProfile.nodeId}
+                onValueChange={(value) =>
+                  setNewProfile({ ...newProfile, nodeId: value })
+                }
+                disabled={isSubmitting || nodes.length === 0}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue
+                    placeholder={
+                      nodes.length > 0
+                        ? "Pilih Node"
+                        : "Tidak ada node tersedia"
+                    }
+                  />
+                </SelectTrigger>
                 <SelectContent>
                   {nodes.length === 0 ? (
                     <SelectItem value="no-nodes" disabled>
@@ -543,7 +506,7 @@ export default function VpnProfilesPage() {
                     </SelectItem>
                   ) : (
                     nodes.map((node) => (
-                      <SelectItem className="notranslate" key={node.id} value={node.id}>
+                      <SelectItem key={node.id} value={node.id}>
                         {node.name}
                       </SelectItem>
                     ))
@@ -565,6 +528,40 @@ export default function VpnProfilesPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Buat Profil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Pencabutan */}
+      <Dialog open={isRevokeModalOpen} onOpenChange={setIsRevokeModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Pencabutan</DialogTitle>
+            <DialogDescription>
+              {userToRevoke ? `Apakah Anda yakin ingin mencabut profil VPN untuk ${userToRevoke.username}? Tindakan ini tidak dapat dibatalkan.` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRevokeModalOpen(false);
+                setUserToRevoke(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmRevoke}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Cabut"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
