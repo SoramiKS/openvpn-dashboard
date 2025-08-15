@@ -42,6 +42,18 @@ interface NodeForSelect {
 }
 type ExtendedVpnUser = VpnUser & { node: { name: string } };
 
+// Tipe spesifik untuk state filter
+type ValidUsersFilterState = {
+    searchTerm: string;
+    nodeId: string;
+};
+type RevokedUsersFilterState = {
+    searchTerm: string;
+    nodeId: string;
+    status?: VpnCertificateStatus | 'all';
+};
+
+
 export default function VpnProfilesPage() {
   const [vpnUsers, setVpnUsers] = useState<ExtendedVpnUser[]>([]);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
@@ -54,9 +66,9 @@ export default function VpnProfilesPage() {
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<{ id: string, username: string } | null>(null);
 
-  // State filter terpisah untuk setiap tabel
-  const [validUsersFilter, setValidUsersFilter] = useState({ searchTerm: "", nodeId: "all" });
-  const [revokedUsersFilter, setRevokedUsersFilter] = useState({ searchTerm: "", nodeId: "all", status: "all" });
+  // Berikan tipe eksplisit pada state filter
+  const [validUsersFilter, setValidUsersFilter] = useState<ValidUsersFilterState>({ searchTerm: "", nodeId: "all" });
+  const [revokedUsersFilter, setRevokedUsersFilter] = useState<RevokedUsersFilterState>({ searchTerm: "", nodeId: "all", status: "all" });
 
   const fetchVpnUsers = useCallback(async () => {
     setIsLoading(true);
@@ -65,7 +77,7 @@ export default function VpnProfilesPage() {
       if (!response.ok) throw new Error("Gagal mengambil profil VPN");
       const data: ExtendedVpnUser[] = await response.json();
       setVpnUsers(data.filter((user) => !user.username.startsWith("server_")));
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Gagal memuat profil VPN.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -78,7 +90,7 @@ export default function VpnProfilesPage() {
       if (!response.ok) throw new Error("Gagal mengambil node");
       const data: NodeForSelect[] = await response.json();
       setNodes(data);
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Gagal memuat node.", variant: "destructive" });
     }
   }, [toast]);
@@ -90,7 +102,6 @@ export default function VpnProfilesPage() {
     return () => clearInterval(interval);
   }, [fetchVpnUsers, fetchNodesForSelect]);
 
-  // Logika filter terpisah untuk pengguna aktif/valid
   const validUsers = useMemo(() => {
     return vpnUsers
       .filter(user => user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING)
@@ -101,7 +112,6 @@ export default function VpnProfilesPage() {
       });
   }, [vpnUsers, validUsersFilter]);
 
-  // Logika filter terpisah untuk pengguna dicabut/kadaluarsa
   const revokedUsers = useMemo(() => {
     return vpnUsers
       .filter(user => user.status === VpnCertificateStatus.REVOKED || user.status === VpnCertificateStatus.EXPIRED || user.status === VpnCertificateStatus.UNKNOWN)
@@ -119,12 +129,13 @@ export default function VpnProfilesPage() {
   const handleDownloadOvpn = (ovpnFileContent: string | null | undefined, username: string) => { if (ovpnFileContent) { const blob = new Blob([ovpnFileContent], { type: "application/octet-stream" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${username}.ovpn`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast({ title: "Unduhan Dimulai", description: `File OVPN untuk ${username} sedang diunduh.` }); } else { toast({ title: "Tidak Ada File OVPN", description: "Profil ini belum memiliki file OVPN.", variant: "default" }); } };
   const getCertificateStatusBadgeVariant = (status: VpnCertificateStatus) => { switch (status) { case VpnCertificateStatus.VALID: return "default"; case VpnCertificateStatus.PENDING: return "secondary"; case VpnCertificateStatus.REVOKED: case VpnCertificateStatus.EXPIRED: return "destructive"; default: return "outline"; } };
 
+  // --- PERBAIKAN: Gunakan tipe yang spesifik untuk setFilterState ---
   const renderProfileTable = (
     profiles: ExtendedVpnUser[],
     title: string,
     noDataMessage: string,
-    filterState: any,
-    setFilterState: (value: any) => void,
+    filterState: ValidUsersFilterState | RevokedUsersFilterState,
+    setFilterState: (value: ValidUsersFilterState | RevokedUsersFilterState) => void,
     isRevokedTable: boolean = false
   ) => (
     <Card>
@@ -144,8 +155,11 @@ export default function VpnProfilesPage() {
                 {nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          {isRevokedTable && (
-            <Select value={filterState.status} onValueChange={(value) => setFilterState({ ...filterState, status: value })}>
+          {isRevokedTable && 'status' in filterState && (
+            <Select 
+              value={(filterState as RevokedUsersFilterState).status} 
+              onValueChange={(value) => setFilterState({ ...filterState, status: value as VpnCertificateStatus | 'all' })}
+            >
               <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
@@ -155,7 +169,13 @@ export default function VpnProfilesPage() {
               </SelectContent>
             </Select>
           )}
-          <Button variant="ghost" onClick={() => setFilterState({ searchTerm: '', nodeId: 'all', status: 'all' })}>
+          <Button variant="ghost" onClick={() => {
+              if (isRevokedTable) {
+                  setFilterState({ searchTerm: '', nodeId: 'all', status: 'all' });
+              } else {
+                  setFilterState({ searchTerm: '', nodeId: 'all' });
+              }
+          }}>
             <XCircle className="h-4 w-4 mr-2" />
             Bersihkan
           </Button>
@@ -173,14 +193,12 @@ export default function VpnProfilesPage() {
                     <TableHead>Kadaluarsa</TableHead>
                     <TableHead>Dibuat</TableHead>
                     <TableHead>Terakhir Terhubung</TableHead>
-                    {/* --- BARU: Tambah header kolom secara kondisional --- */}
                     {isRevokedTable && <TableHead>Tanggal Dicabut</TableHead>}
                     <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
               {profiles.length === 0 ? (
-                // --- MODIFIKASI: Sesuaikan colSpan ---
                 <TableRow><TableCell colSpan={isRevokedTable ? 9 : 8} className="text-center py-8">{noDataMessage}</TableCell></TableRow>
               ) : (
                 profiles.map((user) => (
@@ -194,7 +212,6 @@ export default function VpnProfilesPage() {
                     <TableCell>{user.expirationDate ? new Date(user.expirationDate).toLocaleDateString() : "N/A"}</TableCell>
                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>{user.lastConnected ? new Date(user.lastConnected).toLocaleString() : "Belum Terhubung"}</TableCell>
-                    {/* --- BARU: Tambah sel data secara kondisional --- */}
                     {isRevokedTable && (
                         <TableCell>
                             {user.revocationDate ? new Date(user.revocationDate).toLocaleString() : 'N/A'}
@@ -233,7 +250,8 @@ export default function VpnProfilesPage() {
         "Daftar Profil Pengguna Aktif",
         "Tidak ada profil aktif yang cocok dengan filter.",
         validUsersFilter,
-        setValidUsersFilter
+        setValidUsersFilter,
+        false
       )}
       
       <div className="pt-8"></div>
@@ -244,7 +262,7 @@ export default function VpnProfilesPage() {
         "Tidak ada profil dicabut yang cocok dengan filter.",
         revokedUsersFilter,
         setRevokedUsersFilter,
-        true // Menandakan ini tabel revoked, jadi tampilkan filter status
+        true
       )}
       
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
@@ -296,4 +314,4 @@ export default function VpnProfilesPage() {
       </Dialog>
     </div>
   );
-} 
+}
