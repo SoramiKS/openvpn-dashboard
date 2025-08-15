@@ -1,5 +1,5 @@
 // app/api/agent/full-report/route.ts
-import { NodeStatus, VpnCertificateStatus } from '@/lib/generated/prisma';
+import { NodeStatus, VpnCertificateStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client'; // Import the Prisma namespace

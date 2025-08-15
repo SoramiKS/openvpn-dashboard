@@ -1,4 +1,4 @@
-import { ActionStatus } from '@/lib/generated/prisma';
+import { ActionStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma, { prismaConnectReady } from '@/lib/prisma'; // tambahin ini
 

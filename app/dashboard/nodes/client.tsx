@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Edit, Trash2, Save, X, Loader2 } from "lucide-react";
-import { Node, NodeStatus } from "@/lib/generated/prisma";
+import { Node, NodeStatus } from "@prisma/client";
 import {
   Dialog,
   DialogContent,

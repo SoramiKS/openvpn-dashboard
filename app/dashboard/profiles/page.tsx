@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Download, Loader2, Wifi, PowerOff } from "lucide-react";
+import { Plus, Trash2, Download, Loader2, Wifi, PowerOff, XCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,20 +32,18 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-// Import tipe langsung dari Prisma Client yang digenerate
-import { VpnUser, VpnCertificateStatus } from "@/lib/generated/prisma";
+// Import tipe dari Prisma Client
+import { VpnUser, VpnCertificateStatus } from "@prisma/client";
 
-// Definisi tipe Node yang lebih sederhana untuk dropdown pilihan node
+// Tipe yang diperluas
 interface NodeForSelect {
   id: string;
   name: string;
 }
+type ExtendedVpnUser = VpnUser & { node: { name: string } };
 
 export default function VpnProfilesPage() {
-  // Menggunakan tipe VpnUser dari Prisma, dengan relasi 'node' yang di-include
-  const [vpnUsers, setVpnUsers] = useState<
-    (VpnUser & { node: { name: string } })[]
-  >([]);
+  const [vpnUsers, setVpnUsers] = useState<ExtendedVpnUser[]>([]);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newProfile, setNewProfile] = useState({ username: "", nodeId: "" });
@@ -53,362 +51,159 @@ export default function VpnProfilesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // State untuk dialog konfirmasi pencabutan
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<{ id: string, username: string } | null>(null);
 
-  // Fungsi untuk mengambil data profil VPN dari API
+  // State filter terpisah untuk setiap tabel
+  const [validUsersFilter, setValidUsersFilter] = useState({ searchTerm: "", nodeId: "all" });
+  const [revokedUsersFilter, setRevokedUsersFilter] = useState({ searchTerm: "", nodeId: "all", status: "all" });
+
   const fetchVpnUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/profiles");
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            `HTTP error! status: ${response.status} saat mengambil profil VPN`
-        );
-      }
-      const data: (VpnUser & { node: { name: string } })[] =
-        await response.json();
+      if (!response.ok) throw new Error("Gagal mengambil profil VPN");
+      const data: ExtendedVpnUser[] = await response.json();
       setVpnUsers(data.filter((user) => !user.username.startsWith("server_")));
-    } catch (error: unknown) {
-      console.error("Gagal mengambil profil VPN:", error);
-      if (error instanceof Error) {
-        // Tampilkan toast error jika terjadi kesalahan
-        toast({
-          title: "Error",
-          description:
-            error.message || "Gagal memuat profil VPN. Silakan coba lagi.",
-          variant: "destructive",
-        });
-      }
+    } catch (error) {
+      toast({ title: "Error", description: "Gagal memuat profil VPN.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }, [toast]);
 
-  // Fungsi untuk mengambil daftar node untuk dropdown
   const fetchNodesForSelect = useCallback(async () => {
     try {
       const response = await fetch("/api/nodes");
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            `HTTP error! status: ${response.status} saat mengambil node`
-        );
-      }
+      if (!response.ok) throw new Error("Gagal mengambil node");
       const data: NodeForSelect[] = await response.json();
       setNodes(data);
-    } catch (error: unknown) {
-      console.error("Gagal mengambil node untuk pilihan:", error);
-      if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description:
-            error.message || "Gagal memuat node untuk pembuatan profil.",
-          variant: "destructive",
-        });
-      }
+    } catch (error) {
+      toast({ title: "Error", description: "Gagal memuat node.", variant: "destructive" });
     }
   }, [toast]);
 
-  // Efek samping untuk mengambil data saat komponen dimuat dan untuk auto-refresh
   useEffect(() => {
     fetchVpnUsers();
     fetchNodesForSelect();
-
-    // Auto-refresh profil setiap 15 detik untuk update status koneksi
     const interval = setInterval(fetchVpnUsers, 15000);
-    return () => clearInterval(interval); // Cleanup interval saat komponen unmount
+    return () => clearInterval(interval);
   }, [fetchVpnUsers, fetchNodesForSelect]);
 
-  // Memisahkan vpnUsers menjadi valid dan revoked menggunakan useMemo
+  // Logika filter terpisah untuk pengguna aktif/valid
   const validUsers = useMemo(() => {
-    return vpnUsers.filter(
-      (user) =>
-        user.status === VpnCertificateStatus.VALID ||
-        user.status === VpnCertificateStatus.PENDING
-    );
-  }, [vpnUsers]);
+    return vpnUsers
+      .filter(user => user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING)
+      .filter(user => {
+        const matchesSearch = user.username.toLowerCase().includes(validUsersFilter.searchTerm.toLowerCase());
+        const matchesNode = validUsersFilter.nodeId === 'all' || user.nodeId === validUsersFilter.nodeId;
+        return matchesSearch && matchesNode;
+      });
+  }, [vpnUsers, validUsersFilter]);
 
+  // Logika filter terpisah untuk pengguna dicabut/kadaluarsa
   const revokedUsers = useMemo(() => {
-    return vpnUsers.filter(
-      (user) =>
-        user.status === VpnCertificateStatus.REVOKED ||
-        user.status === VpnCertificateStatus.EXPIRED ||
-        user.status === VpnCertificateStatus.UNKNOWN
-    );
-  }, [vpnUsers]);
-
-  // Fungsi untuk menangani penambahan profil VPN baru
-  const handleAddProfile = async () => {
-    if (!newProfile.username.trim() || !newProfile.nodeId) {
-      toast({
-        title: "Kesalahan Input",
-        description: "Nama Pengguna dan Node wajib diisi.",
-        variant: "destructive",
+    return vpnUsers
+      .filter(user => user.status === VpnCertificateStatus.REVOKED || user.status === VpnCertificateStatus.EXPIRED || user.status === VpnCertificateStatus.UNKNOWN)
+      .filter(user => {
+        const matchesSearch = user.username.toLowerCase().includes(revokedUsersFilter.searchTerm.toLowerCase());
+        const matchesNode = revokedUsersFilter.nodeId === 'all' || user.nodeId === revokedUsersFilter.nodeId;
+        const matchesStatus = revokedUsersFilter.status === 'all' || user.status === revokedUsersFilter.status;
+        return matchesSearch && matchesNode && matchesStatus;
       });
-      return;
-    }
+  }, [vpnUsers, revokedUsersFilter]);
 
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/profiles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: newProfile.username,
-          nodeId: newProfile.nodeId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal membuat profil VPN");
-      }
-
-      toast({
-        title: "Berhasil",
-        description: "Pembuatan profil VPN berhasil dimulai!",
-      });
-      setNewProfile({ username: "", nodeId: "" }); // Reset form
-      setIsAddModalOpen(false); // Tutup modal
-    } catch (error: unknown) {
-      console.error("Error membuat profil VPN:", error);
-      if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description:
-            error.message || "Gagal membuat profil VPN. Silakan coba lagi.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Fungsi untuk menampilkan modal konfirmasi pencabutan
-  const handleRevokeClick = (user: { id: string, username: string }) => {
-    setUserToRevoke(user);
-    setIsRevokeModalOpen(true);
-  };
-
-  // Fungsi untuk menangani pencabutan profil VPN
-  const handleConfirmRevoke = async () => {
-    if (!userToRevoke) return;
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`/api/profiles/${userToRevoke.id}/revoke`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal mencabut profil VPN.");
-      }
-
-      toast({
-        title: "Berhasil",
-        description: `Pencabutan profil VPN untuk ${userToRevoke.username} berhasil dimulai!`,
-      });
-      // Tutup modal dan reset state
-      setIsRevokeModalOpen(false);
-      setUserToRevoke(null);
-      // Refresh data
-      fetchVpnUsers();
-    } catch (error: unknown) {
-      console.error("Error mencabut profil VPN:", error);
-      if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description:
-            error.message || "Gagal mencabut profil VPN. Silakan coba lagi.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Fungsi untuk mengunduh file OVPN
-  const handleDownloadOvpn = (
-    ovpnFileContent: string | null | undefined,
-    username: string
-  ) => {
-    if (ovpnFileContent) {
-      const blob = new Blob([ovpnFileContent], {
-        type: "application/octet-stream",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${username}.ovpn`; // Nama file yang diunduh
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url); // Bersihkan URL objek
-
-      toast({
-        title: "Unduhan Dimulai",
-        description: `File OVPN untuk ${username} sedang diunduh.`,
-      });
-    } else {
-      toast({
-        title: "Tidak Ada File OVPN",
-        description:
-          "Profil ini belum memiliki file OVPN yang tersedia atau belum dibuat oleh agen.",
-        variant: "default",
-      });
-    }
-  };
-
-  // Helper untuk menentukan varian Badge status sertifikat
-  const getCertificateStatusBadgeVariant = (status: VpnCertificateStatus) => {
-    switch (status) {
-      case VpnCertificateStatus.VALID:
-        return "default";
-      case VpnCertificateStatus.PENDING:
-        return "secondary";
-      case VpnCertificateStatus.REVOKED:
-      case VpnCertificateStatus.EXPIRED:
-        return "destructive";
-      case VpnCertificateStatus.UNKNOWN:
-      default:
-        return "outline";
-    }
-  };
+  const handleAddProfile = async () => { if (!newProfile.username.trim() || !newProfile.nodeId) { toast({ title: "Kesalahan Input", description: "Nama Pengguna dan Node wajib diisi.", variant: "destructive" }); return; } setIsSubmitting(true); try { const response = await fetch("/api/profiles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: newProfile.username, nodeId: newProfile.nodeId }), }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Gagal membuat profil VPN"); } toast({ title: "Berhasil", description: "Pembuatan profil VPN berhasil dimulai!" }); setNewProfile({ username: "", nodeId: "" }); setIsAddModalOpen(false); } catch (error: unknown) { if (error instanceof Error) { toast({ title: "Error", description: error.message || "Gagal membuat profil VPN.", variant: "destructive" }); } } finally { setIsSubmitting(false); } };
+  const handleRevokeClick = (user: { id: string, username: string }) => { setUserToRevoke(user); setIsRevokeModalOpen(true); };
+  const handleConfirmRevoke = async () => { if (!userToRevoke) return; setIsSubmitting(true); try { const response = await fetch(`/api/profiles/${userToRevoke.id}/revoke`, { method: "POST" }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || "Gagal mencabut profil VPN."); } toast({ title: "Berhasil", description: `Pencabutan profil untuk ${userToRevoke.username} dimulai!` }); setIsRevokeModalOpen(false); setUserToRevoke(null); fetchVpnUsers(); } catch (error: unknown) { if (error instanceof Error) { toast({ title: "Error", description: error.message || "Gagal mencabut profil VPN.", variant: "destructive" }); } } finally { setIsSubmitting(false); } };
+  const handleDownloadOvpn = (ovpnFileContent: string | null | undefined, username: string) => { if (ovpnFileContent) { const blob = new Blob([ovpnFileContent], { type: "application/octet-stream" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${username}.ovpn`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast({ title: "Unduhan Dimulai", description: `File OVPN untuk ${username} sedang diunduh.` }); } else { toast({ title: "Tidak Ada File OVPN", description: "Profil ini belum memiliki file OVPN.", variant: "default" }); } };
+  const getCertificateStatusBadgeVariant = (status: VpnCertificateStatus) => { switch (status) { case VpnCertificateStatus.VALID: return "default"; case VpnCertificateStatus.PENDING: return "secondary"; case VpnCertificateStatus.REVOKED: case VpnCertificateStatus.EXPIRED: return "destructive"; default: return "outline"; } };
 
   const renderProfileTable = (
-    profiles: (VpnUser & { node: { name: string } })[],
+    profiles: ExtendedVpnUser[],
     title: string,
-    noDataMessage: string
+    noDataMessage: string,
+    filterState: any,
+    setFilterState: (value: any) => void,
+    isRevokedTable: boolean = false
   ) => (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
+        <div className="flex flex-col md:flex-row gap-4 pt-4">
+          <Input
+            placeholder="Cari nama pengguna..."
+            value={filterState.searchTerm}
+            onChange={(e) => setFilterState({ ...filterState, searchTerm: e.target.value })}
+            className="flex-grow"
+          />
+          <Select value={filterState.nodeId} onValueChange={(value) => setFilterState({ ...filterState, nodeId: value })}>
+            <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Node" /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">Semua Node</SelectItem>
+                {nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {isRevokedTable && (
+            <Select value={filterState.status} onValueChange={(value) => setFilterState({ ...filterState, status: value })}>
+              <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value={VpnCertificateStatus.REVOKED}>REVOKED</SelectItem>
+                <SelectItem value={VpnCertificateStatus.EXPIRED}>EXPIRED</SelectItem>
+                <SelectItem value={VpnCertificateStatus.UNKNOWN}>UNKNOWN</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Button variant="ghost" onClick={() => setFilterState({ searchTerm: '', nodeId: 'all', status: 'all' })}>
+            <XCircle className="h-4 w-4 mr-2" />
+            Bersihkan
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-            <span className="ml-2 text-gray-500">Memuat profil VPN...</span>
-          </div>
-        ) : (
+        {isLoading ? ( <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Nama Pengguna</TableHead>
-                <TableHead>Node</TableHead>
-                <TableHead>Status Sertifikat</TableHead>
-                <TableHead>Koneksi</TableHead>
-                <TableHead>Tanggal Kadaluarsa</TableHead>
-                <TableHead>Tanggal Dibuat</TableHead>
-                <TableHead>Terakhir Terhubung</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
+                <TableRow>
+                    <TableHead>Nama Pengguna</TableHead>
+                    <TableHead>Node</TableHead>
+                    <TableHead>Status Sertifikat</TableHead>
+                    <TableHead>Koneksi</TableHead>
+                    <TableHead>Kadaluarsa</TableHead>
+                    <TableHead>Dibuat</TableHead>
+                    <TableHead>Terakhir Terhubung</TableHead>
+                    {/* --- BARU: Tambah header kolom secara kondisional --- */}
+                    {isRevokedTable && <TableHead>Tanggal Dicabut</TableHead>}
+                    <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
             </TableHeader>
             <TableBody>
               {profiles.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="text-center py-8 text-gray-500"
-                  >
-                    {noDataMessage}
-                  </TableCell>
-                </TableRow>
+                // --- MODIFIKASI: Sesuaikan colSpan ---
+                <TableRow><TableCell colSpan={isRevokedTable ? 9 : 8} className="text-center py-8">{noDataMessage}</TableCell></TableRow>
               ) : (
                 profiles.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.username}
-                    </TableCell>
+                    <TableCell className="font-medium">{user.username}</TableCell>
                     <TableCell>{user.node?.name || "N/A"}</TableCell>
+                    <TableCell><Badge variant={getCertificateStatusBadgeVariant(user.status)}>{user.status}</Badge></TableCell>
                     <TableCell>
-                      <Badge
-                        variant={getCertificateStatusBadgeVariant(user.status)}
-                      >
-                        {user.status}
-                      </Badge>
+                      {user.isActive ? <Badge variant="default" className="bg-green-500 hover:bg-green-500"><Wifi className="h-3 w-3 mr-1" /> Online</Badge> : <Badge variant="outline" className="text-gray-500"><PowerOff className="h-3 w-3 mr-1" /> Offline</Badge>}
                     </TableCell>
+                    <TableCell>{user.expirationDate ? new Date(user.expirationDate).toLocaleDateString() : "N/A"}</TableCell>
+                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{user.lastConnected ? new Date(user.lastConnected).toLocaleString() : "Belum Terhubung"}</TableCell>
+                    {/* --- BARU: Tambah sel data secara kondisional --- */}
+                    {isRevokedTable && (
+                        <TableCell>
+                            {user.revocationDate ? new Date(user.revocationDate).toLocaleString() : 'N/A'}
+                        </TableCell>
+                    )}
                     <TableCell>
-                      {user.isActive ? (
-                        <Badge
-                          variant="default"
-                          className="bg-green-500 hover:bg-green-500"
-                        >
-                          <Wifi className="h-3 w-3 mr-1" /> Online
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-gray-500">
-                          <PowerOff className="h-3 w-3 mr-1" /> Offline
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.expirationDate
-                        ? new Date(user.expirationDate).toLocaleDateString()
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {user.lastConnected
-                        ? new Date(user.lastConnected).toLocaleString()
-                        : "Belum Terhubung"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        {/* Tombol Unduh OVPN (hanya untuk status VALID) */}
-                        {user.ovpnFileContent &&
-                        user.status === VpnCertificateStatus.VALID ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleDownloadOvpn(
-                                user.ovpnFileContent,
-                                user.username
-                              )
-                            }
-                            disabled={isSubmitting}
-                          >
-                            <Download className="h-4 w-4 mr-1" /> Unduh
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled
-                            title="File OVPN belum tersedia atau sertifikat tidak valid"
-                          >
-                            <Download className="h-4 w-4 mr-1" /> Unduh
-                          </Button>
-                        )}
-
-                        {/* Tombol Cabut (hanya untuk status VALID atau PENDING) */}
-                        {(user.status === VpnCertificateStatus.VALID ||
-                          user.status === VpnCertificateStatus.PENDING) && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleRevokeClick(user)}
-                            disabled={isSubmitting}
-                          >
-                            {isSubmitting ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 mr-1" />
-                            )}
-                            Cabut
-                          </Button>
-                        )}
+                      <div className="flex space-x-2 justify-end">
+                        {user.ovpnFileContent && user.status === VpnCertificateStatus.VALID ? ( <Button variant="outline" size="sm" onClick={() => handleDownloadOvpn(user.ovpnFileContent, user.username)} disabled={isSubmitting}><Download className="h-4 w-4 mr-1" /> Unduh</Button> ) : ( <Button variant="outline" size="sm" disabled title="File OVPN belum tersedia"><Download className="h-4 w-4 mr-1" /> Unduh</Button> )}
+                        {(user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING) && ( <Button variant="destructive" size="sm" onClick={() => handleRevokeClick(user)} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />} Cabut</Button> )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -420,152 +215,85 @@ export default function VpnProfilesPage() {
       </CardContent>
     </Card>
   );
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profil VPN</h1>
+          <h1 className="text-3xl font-bold">Profil VPN</h1>
           <p className="text-gray-600">Kelola profil konfigurasi VPN</p>
         </div>
         <Button onClick={() => setIsAddModalOpen(true)} disabled={isSubmitting}>
-          {isSubmitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4 mr-2" />
-          )}
-          Buat Profil
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />} Buat Profil
         </Button>
       </div>
       
-      {/* Tabel untuk Profil Pengguna Aktif/Valid */}
       {renderProfileTable(
         validUsers,
         "Daftar Profil Pengguna Aktif",
-        "Tidak ada profil VPN aktif ditemukan. Buat profil baru untuk memulai!"
+        "Tidak ada profil aktif yang cocok dengan filter.",
+        validUsersFilter,
+        setValidUsersFilter
       )}
       
-      <div className="pt-8"></div> {/* Spacer antara dua tabel */}
+      <div className="pt-8"></div>
       
-      {/* Tabel untuk Profil Pengguna Dicabut/Kadaluarsa */}
       {renderProfileTable(
         revokedUsers,
         "Daftar Profil Pengguna Dicabut/Kadaluarsa",
-        "Tidak ada profil VPN dicabut atau kadaluarsa ditemukan."
+        "Tidak ada profil dicabut yang cocok dengan filter.",
+        revokedUsersFilter,
+        setRevokedUsersFilter,
+        true // Menandakan ini tabel revoked, jadi tampilkan filter status
       )}
       
-      {/* Dialog Tambah Profil VPN */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Buat Profil VPN Baru</DialogTitle>
-            <DialogDescription>
-              Masukkan nama pengguna dan pilih node untuk profil VPN baru.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Nama Pengguna
-              </Label>
-              <Input
-                id="username"
-                name="username"
-                value={newProfile.username}
-                onChange={(e) =>
-                  setNewProfile({ ...newProfile, username: e.target.value })
-                }
-                className="col-span-3"
-                disabled={isSubmitting}
-              />
+            <DialogHeader>
+                <DialogTitle>Buat Profil VPN Baru</DialogTitle>
+                <DialogDescription>Masukkan nama pengguna dan pilih node.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="username" className="text-right">Nama Pengguna</Label>
+                    <Input id="username" value={newProfile.username} onChange={(e) => setNewProfile({ ...newProfile, username: e.target.value })} className="col-span-3" disabled={isSubmitting} />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="node" className="text-right">Node</Label>
+                    <Select value={newProfile.nodeId} onValueChange={(value) => setNewProfile({ ...newProfile, nodeId: value })} disabled={isSubmitting || nodes.length === 0}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder={nodes.length > 0 ? "Pilih Node" : "Tidak ada node"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {nodes.map((node) => (<SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="node" className="text-right">
-                Node yang Ditugaskan
-              </Label>
-              <Select
-                value={newProfile.nodeId}
-                onValueChange={(value) =>
-                  setNewProfile({ ...newProfile, nodeId: value })
-                }
-                disabled={isSubmitting || nodes.length === 0}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={
-                      nodes.length > 0
-                        ? "Pilih Node"
-                        : "Tidak ada node tersedia"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {nodes.length === 0 ? (
-                    <SelectItem value="no-nodes" disabled>
-                      Tidak ada node tersedia. Silakan tambahkan node terlebih
-                      dahulu.
-                    </SelectItem>
-                  ) : (
-                    nodes.map((node) => (
-                      <SelectItem key={node.id} value={node.id}>
-                        {node.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
-              disabled={isSubmitting}
-            >
-              Batal
-            </Button>
-            <Button onClick={handleAddProfile} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Buat Profil
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isSubmitting}>Batal</Button>
+                <Button onClick={handleAddProfile} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Buat Profil
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Dialog Konfirmasi Pencabutan */}
       <Dialog open={isRevokeModalOpen} onOpenChange={setIsRevokeModalOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Konfirmasi Pencabutan</DialogTitle>
-            <DialogDescription>
-              {userToRevoke ? `Apakah Anda yakin ingin mencabut profil VPN untuk ${userToRevoke.username}? Tindakan ini tidak dapat dibatalkan.` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsRevokeModalOpen(false);
-                setUserToRevoke(null);
-              }}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmRevoke}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                "Cabut"
-              )}
-            </Button>
-          </DialogFooter>
+            <DialogHeader>
+                <DialogTitle>Konfirmasi Pencabutan</DialogTitle>
+                <DialogDescription>
+                    {userToRevoke ? `Apakah Anda yakin ingin mencabut profil VPN untuk ${userToRevoke.username}?` : ''}
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => { setIsRevokeModalOpen(false); setUserToRevoke(null); }}>Batal</Button>
+                <Button variant="destructive" onClick={handleConfirmRevoke} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cabut"}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+} 

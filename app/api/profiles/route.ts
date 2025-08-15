@@ -1,6 +1,6 @@
 // app/api/profiles/route.ts
 
-import { ActionType, ActionStatus } from '@/lib/generated/prisma';
+import { ActionType, ActionStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma'; // Using global PrismaClient instance
 

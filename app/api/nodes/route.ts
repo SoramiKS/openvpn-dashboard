@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { NodeStatus } from "@/lib/generated/prisma";
+import { NodeStatus } from "@prisma/client";
 import { randomBytes } from 'crypto';
 import { Prisma } from "@prisma/client"; // Import Prisma for error types
 

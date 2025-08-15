@@ -57,6 +57,7 @@ model Node {
 
   vpnUsers     VpnUser[]     // Node has many VpnUsers
   actionLogs   ActionLog[]   // Node has many ActionLogs
+  vpnActivityLogs VpnActivityLog[] // Add this line
 }
 
 model VpnUser {
@@ -104,4 +105,20 @@ model ActionLog {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   executedAt      DateTime?    // Kapan aksi ini dieksekusi oleh agen
+}
+
+model VpnActivityLog {
+  id            String    @id @default(cuid())
+  timestamp     DateTime
+  action        String    // "CONNECT" or "DISCONNECT"
+  username      String?
+  publicIp      String?
+  vpnIp         String?
+  bytesReceived BigInt?   // Use BigInt for potentially large numbers
+  bytesSent     BigInt?   // Use BigInt for potentially large numbers
+  createdAt     DateTime  @default(now())
+
+  // Relation to the Node (server)
+  node          Node      @relation(fields: [nodeId], references: [id])
+  nodeId        String
 }

@@ -1,6 +1,6 @@
 // app/api/agent/report-status/route.ts
 import prisma from '@/lib/prisma';
-import { NodeStatus } from "@/lib/generated/prisma";
+import { NodeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { Prisma } from '@prisma/client'; // Import the Prisma namespace
 

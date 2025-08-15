@@ -8,7 +8,7 @@ import { Server, Users, Activity, Shield, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Import tipe langsung dari Prisma Client yang digenerate
-import { Node, VpnUser, VpnCertificateStatus, NodeStatus } from "@/lib/generated/prisma"; // Import NodeStatus enum
+import { Node, VpnUser, VpnCertificateStatus, NodeStatus } from "@prisma/client"; // Import NodeStatus enum
 
 export default function DashboardPage() {
   const [nodesData, setNodesData] = useState<Node[]>([]);
