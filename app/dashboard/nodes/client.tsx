@@ -43,7 +43,10 @@ interface NodesClientPageProps {
 }
 
 // Nama komponen tetap sama, tidak masalah
-export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPageProps) {
+export default function NodesClientPage({
+  apiKey,
+  dashboardUrl,
+}: NodesClientPageProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,7 +62,9 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
   const [nodeForGuide, setNodeForGuide] = useState<Node | null>(null);
 
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(null);
+  const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(
+    null
+  );
 
   const fetchNodes = useCallback(async () => {
     if (!nodes.length) {
@@ -67,7 +72,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
     }
     try {
       const response = await fetch("/api/nodes");
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
       const data: Node[] = await response.json();
       setNodes(data);
     } catch (error) {
@@ -133,12 +139,12 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       setNodeForGuide(createdNode);
 
       await fetchNodes();
-
     } catch (error) {
       console.error("Error adding node:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Gagal menambahkan node.",
+        description:
+          error instanceof Error ? error.message : "Gagal menambahkan node.",
         variant: "destructive",
       });
     } finally {
@@ -148,7 +154,11 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
 
   const startEditing = (node: Node) => {
     setEditingNodeId(node.id);
-    setEditedNode({ name: node.name, ip: node.ip, location: node.location ?? "" });
+    setEditedNode({
+      name: node.name,
+      ip: node.ip,
+      location: node.location ?? "",
+    });
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,7 +228,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
   const handleDeleteNode = async (id: string) => {
     toast({
       title: "Konfirmasi penghapusan",
-      description: "Apakah Anda yakin ingin menghapus node ini? Tindakan ini tidak dapat dibatalkan.",
+      description:
+        "Apakah Anda yakin ingin menghapus node ini? Tindakan ini tidak dapat dibatalkan.",
       variant: "destructive",
       action: (
         <Button
@@ -274,10 +285,12 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
           <h1 className="text-3xl font-bold text-gray-900">Nodes</h1>
           <p className="text-gray-600">Kelola node server OpenVPN Anda</p>
         </div>
-        <Button onClick={() => {
-          setNewNode({ name: "", ip: "", location: "" });
-          setIsAddModalOpen(true);
-        }}>
+        <Button
+          onClick={() => {
+            setNewNode({ name: "", ip: "", location: "" });
+            setIsAddModalOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Tambah Node
         </Button>
@@ -366,8 +379,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                               node.status === NodeStatus.ONLINE
                                 ? "default"
                                 : node.status === NodeStatus.OFFLINE
-                                  ? "destructive"
-                                  : "secondary"
+                                ? "destructive"
+                                : "secondary"
                             }
                           >
                             {node.status}
@@ -378,12 +391,13 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${(node.cpuUsage || 0) > 80
+                                  className={`h-2 rounded-full ${
+                                    (node.cpuUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.cpuUsage || 0) > 60
-                                        ? "bg-yellow-500"
-                                        : "bg-green-500"
-                                    }`}
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                  }`}
                                   style={{ width: `${node.cpuUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -400,12 +414,13 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${(node.ramUsage || 0) > 80
+                                  className={`h-2 rounded-full ${
+                                    (node.ramUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.ramUsage || 0) > 60
-                                        ? "bg-yellow-500"
-                                        : "bg-green-500"
-                                    }`}
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                  }`}
                                   style={{ width: `${node.ramUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -489,27 +504,68 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Tambah Node Baru</DialogTitle>
-            <DialogDescription>Masukkan detail untuk node server baru. Setelah disimpan, Anda akan dipandu untuk instalasi.</DialogDescription>
+            <DialogDescription>
+              Masukkan detail untuk node server baru. Setelah disimpan, Anda
+              akan dipandu untuk instalasi.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleProceedToGuide}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Nama</Label>
-                <Input id="name" value={newNode.name} onChange={(e) => setNewNode({ ...newNode, name: e.target.value })} className="col-span-3" disabled={isSubmitting} />
+                <Label htmlFor="name" className="text-right">
+                  Nama
+                </Label>
+                <Input
+                  id="name"
+                  value={newNode.name}
+                  onChange={(e) =>
+                    setNewNode({ ...newNode, name: e.target.value })
+                  }
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="ip" className="text-right">IP Address</Label>
-                <Input id="ip" value={newNode.ip} onChange={(e) => setNewNode({ ...newNode, ip: e.target.value })} className="col-span-3" disabled={isSubmitting} />
+                <Label htmlFor="ip" className="text-right">
+                  IP Address
+                </Label>
+                <Input
+                  id="ip"
+                  value={newNode.ip}
+                  onChange={(e) =>
+                    setNewNode({ ...newNode, ip: e.target.value })
+                  }
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="location" className="text-right">Lokasi</Label>
-                <Input id="location" value={newNode.location} onChange={(e) => setNewNode({ ...newNode, location: e.target.value })} className="col-span-3" disabled={isSubmitting} />
+                <Label htmlFor="location" className="text-right">
+                  Lokasi
+                </Label>
+                <Input
+                  id="location"
+                  value={newNode.location}
+                  onChange={(e) =>
+                    setNewNode({ ...newNode, location: e.target.value })
+                  }
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Batal</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddModalOpen(false)}
+              >
+                Batal
+              </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Lanjutkan ke Panduan
               </Button>
             </DialogFooter>
@@ -517,12 +573,15 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isGuideModalOpen} onOpenChange={(isOpen) => {
-        setIsGuideModalOpen(isOpen);
-        if (!isOpen) {
-          setNodeForGuide(null);
-        }
-      }}>
+      <Dialog
+        open={isGuideModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsGuideModalOpen(isOpen);
+          if (!isOpen) {
+            setNodeForGuide(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl">
           {nodeForGuide && (
             <NodeInstallationGuide

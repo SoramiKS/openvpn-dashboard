@@ -8,7 +8,12 @@ import { Server, Users, Activity, Shield, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Import tipe langsung dari Prisma Client yang digenerate
-import { Node, VpnUser, VpnCertificateStatus, NodeStatus } from "@prisma/client"; // Import NodeStatus enum
+import {
+  Node,
+  VpnUser,
+  VpnCertificateStatus,
+  NodeStatus,
+} from "@prisma/client"; // Import NodeStatus enum
 
 export default function DashboardPage() {
   const [nodesData, setNodesData] = useState<Node[]>([]);
@@ -24,7 +29,10 @@ export default function DashboardPage() {
       const nodesResponse = await fetch("/api/nodes");
       if (!nodesResponse.ok) {
         const errorData = await nodesResponse.json();
-        throw new Error(errorData.message || `HTTP error! status: ${nodesResponse.status} saat mengambil data node`);
+        throw new Error(
+          errorData.message ||
+            `HTTP error! status: ${nodesResponse.status} saat mengambil data node`
+        );
       }
       const nodes: Node[] = await nodesResponse.json();
       setNodesData(nodes);
@@ -33,18 +41,21 @@ export default function DashboardPage() {
       const usersResponse = await fetch("/api/profiles");
       if (!usersResponse.ok) {
         const errorData = await usersResponse.json();
-        throw new Error(errorData.message || `HTTP error! status: ${usersResponse.status} saat mengambil data profil VPN`);
+        throw new Error(
+          errorData.message ||
+            `HTTP error! status: ${usersResponse.status} saat mengambil data profil VPN`
+        );
       }
       const users: VpnUser[] = await usersResponse.json();
       setVpnUsersData(users);
-
     } catch (error: unknown) {
       console.error("Gagal memuat data dashboard:", error);
       if (error instanceof Error) {
         // Tampilkan toast error jika terjadi kesalahan
         toast({
           title: "Error",
-          description: error.message || "Gagal memuat data dashboard. Silakan coba lagi.",
+          description:
+            error.message || "Gagal memuat data dashboard. Silakan coba lagi.",
           variant: "destructive",
         });
       }
@@ -64,26 +75,35 @@ export default function DashboardPage() {
   // Hitung statistik dari data yang diambil
   const totalNodes = nodesData.length;
   // Perbaiki perbandingan status di sini
-  const onlineNodes = nodesData.filter(node => node.status === NodeStatus.ONLINE).length;
+  const onlineNodes = nodesData.filter(
+    (node) => node.status === NodeStatus.ONLINE
+  ).length;
   const totalUsers = vpnUsersData.length;
-  const validUsersCount = vpnUsersData.filter(user => user.status === VpnCertificateStatus.VALID).length;
-  const activeSessions = vpnUsersData.filter(user => user.isActive).length;
+  const validUsersCount = vpnUsersData.filter(
+    (user) => user.status === VpnCertificateStatus.VALID
+  ).length;
+  const activeSessions = vpnUsersData.filter((user) => user.isActive).length;
 
   // Tentukan status sistem secara keseluruhan
-  const systemStatus = onlineNodes === totalNodes && totalNodes > 0 ? "Healthy" : "Degraded";
+  const systemStatus =
+    onlineNodes === totalNodes && totalNodes > 0 ? "Healthy" : "Degraded";
   // Varian badge untuk status sistem (tidak perlu diubah, karena sudah string)
 
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Ringkasan</h1>
-        <p className="text-gray-600">Pantau infrastruktur OpenVPN Anda dengan cepat dan mudah</p>
+        <p className="text-gray-600">
+          Pantau infrastruktur OpenVPN Anda dengan cepat dan mudah
+        </p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center items-center h-60">
           <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-          <span className="ml-4 text-gray-500 text-lg">Memuat data dashboard...</span>
+          <span className="ml-4 text-gray-500 text-lg">
+            Memuat data dashboard...
+          </span>
         </div>
       ) : (
         <>
@@ -91,7 +111,9 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Nodes</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Nodes
+                </CardTitle>
                 <Server className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -107,22 +129,24 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Users
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalUsers}</div>
                 <div className="flex items-center mt-2">
-                  <Badge variant="default">
-                    {validUsersCount} valid
-                  </Badge>
+                  <Badge variant="default">{validUsersCount} valid</Badge>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sesi Aktif</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Sesi Aktif
+                </CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -135,15 +159,25 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Status Sistem</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Status Sistem
+                </CardTitle>
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${systemStatus === "Healthy" ? "text-green-600" : "text-red-600"}`}>
+                <div
+                  className={`text-2xl font-bold ${
+                    systemStatus === "Healthy"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {systemStatus}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {systemStatus === "Healthy" ? "Semua sistem beroperasi normal" : "Beberapa node mungkin offline atau bermasalah"}
+                  {systemStatus === "Healthy"
+                    ? "Semua sistem beroperasi normal"
+                    : "Beberapa node mungkin offline atau bermasalah"}
                 </p>
               </CardContent>
             </Card>
@@ -158,17 +192,31 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-4">
                   {nodesData.length === 0 ? (
-                    <div className="text-center text-gray-500 py-4">Tidak ada node ditemukan.</div>
+                    <div className="text-center text-gray-500 py-4">
+                      Tidak ada node ditemukan.
+                    </div>
                   ) : (
                     nodesData.map((node) => (
-                      <div key={node.id} className="flex items-center justify-between">
+                      <div
+                        key={node.id}
+                        className="flex items-center justify-between"
+                      >
                         <div>
                           <div className="font-medium">{node.name}</div>
-                          <div className="text-sm text-muted-foreground">{node.location || "N/A"}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {node.location || "N/A"}
+                          </div>
                         </div>
                         {/* Perbaiki perbandingan status di sini */}
-                        <Badge variant={node.status === NodeStatus.ONLINE ? 'default' : 'destructive'}>
-                          {node.status} {/* Menampilkan nilai enum sebagai string */}
+                        <Badge
+                          variant={
+                            node.status === NodeStatus.ONLINE
+                              ? "default"
+                              : "destructive"
+                          }
+                        >
+                          {node.status}{" "}
+                          {/* Menampilkan nilai enum sebagai string */}
                         </Badge>
                       </div>
                     ))
@@ -183,38 +231,47 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {nodesData.filter(node => node.status === NodeStatus.ONLINE).length === 0 ? ( // Filter juga diperbaiki
-                    <div className="text-center text-gray-500 py-4">Tidak ada node online untuk menampilkan penggunaan sumber daya.</div>
+                  {nodesData.filter((node) => node.status === NodeStatus.ONLINE)
+                    .length === 0 ? ( // Filter juga diperbaiki
+                    <div className="text-center text-gray-500 py-4">
+                      Tidak ada node online untuk menampilkan penggunaan sumber
+                      daya.
+                    </div>
                   ) : (
-                    nodesData.filter(node => node.status === NodeStatus.ONLINE).map((node) => (
-                      <div key={node.id} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>{node.name}</span>
-                          <span>CPU: {node.cpuUsage?.toFixed(1) || 'N/A'}%</span>
+                    nodesData
+                      .filter((node) => node.status === NodeStatus.ONLINE)
+                      .map((node) => (
+                        <div key={node.id} className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{node.name}</span>
+                            <span>
+                              CPU: {node.cpuUsage?.toFixed(1) || "N/A"}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: `${node.cpuUsage || 0}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span></span>
+                            <span>
+                              RAM: {node.ramUsage?.toFixed(1) || "N/A"}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-purple-600 h-2 rounded-full"
+                              style={{ width: `${node.ramUsage || 0}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${node.cpuUsage || 0}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span></span>
-                          <span>RAM: {node.ramUsage?.toFixed(1) || 'N/A'}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-purple-600 h-2 rounded-full"
-                            style={{ width: `${node.ramUsage || 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))
+                      ))
                   )}
                 </div>
               </CardContent>
             </Card>
-
           </div>
         </>
       )}
