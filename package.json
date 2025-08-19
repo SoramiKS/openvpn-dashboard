@@ -39,6 +39,7 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "autoprefixer": "10.4.21",
+    "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -56,6 +57,7 @@
     "react": "18.3.1",
     "react-day-picker": "^9.8.1",
     "react-dom": "18.3.1",
+    "react-google-recaptcha": "^3.1.0",
     "react-hook-form": "^7.61.1",
     "react-resizable-panels": "^2.1.9",
     "recharts": "^2.15.4",
@@ -67,11 +69,13 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/estree": "^1.0.8",
     "@types/json-schema": "^7.0.15",
     "@types/node": "^24.2.0",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
+    "@types/react-google-recaptcha": "^2.1.9",
     "typescript": "^5.9.2"
   }
 }

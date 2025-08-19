@@ -10,6 +10,11 @@ datasource db {
 }
 
 // --- Enums ---
+enum Role {
+  ADMIN
+  USER
+}
+
 enum NodeStatus {
   ONLINE
   OFFLINE
@@ -41,6 +46,18 @@ enum ActionStatus {
 
 // --- Models ---
 
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String    // Simpan password yang sudah di-hash (misal: dengan bcrypt)
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relasi: Satu User dashboard memiliki satu profil VpnUser
+  vpnProfile VpnUser?
+}
+
 model Node {
   id           String    @id @default(uuid())
   name         String    @unique
@@ -61,26 +78,27 @@ model Node {
 }
 
 model VpnUser {
-  id              String               @id @default(uuid())
-  username        String               @unique // Common Name of the VPN certificate
+  id              String    @id @default(uuid())
+  username        String    @unique
   nodeId          String
-  node            Node                 @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  node            Node      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   
-  status          VpnCertificateStatus @default(PENDING) // Default ke PENDING saat pertama dibuat
-  expirationDate  DateTime?            // Date when the certificate expires
-  revocationDate  DateTime?            // Date when the certificate was revoked (optional)
-  serialNumber    String?             
+  status          VpnCertificateStatus @default(PENDING)
+  expirationDate  DateTime?
+  revocationDate  DateTime?
+  serialNumber    String?
+  isActive        Boolean   @default(false)
+  lastConnected   DateTime?
+  ovpnFileContent String?   @db.Text
+  lastSeen        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  isActive         Boolean                @default(false) // <-- BARU: Apakah user sedang aktif terhubung?
-  lastConnected    DateTime?              // <-- BARU: Kapan terakhir kali user terhubung?
+  actionLogs      ActionLog[]
 
-  ovpnFileContent String?               @db.Text// Simpan konten OVPN di sini untuk kemudahan download
-
-  lastSeen        DateTime?            // Kapan user terakhir kali terhubung (jika bisa didapat dari OpenVPN)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-
-  actionLogs      ActionLog[] // VpnUser now linked to ActionLogs
+  // --- TAMBAHKAN DUA BARIS INI ---
+  dashboardUserId String? @unique // Menghubungkan ke ID dari model User
+  dashboardUser   User?   @relation(fields: [dashboardUserId], references: [id], onDelete: SetNull)
 }
 
 // Mengganti nama model 'Log' menjadi 'ActionLog' agar lebih spesifik

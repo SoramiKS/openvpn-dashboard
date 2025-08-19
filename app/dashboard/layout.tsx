@@ -4,7 +4,7 @@
 import { Sidebar, MobileSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import { signOut } from "next-auth/react"; // Import signOut
+import { SessionProvider, signOut } from "next-auth/react"; // Import signOut
 
 export default function DashboardLayout({
   children,
@@ -43,7 +43,9 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-6">
+                  <SessionProvider>
           {children}
+        </SessionProvider>
         </main>
       </div>
     </div>

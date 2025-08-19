@@ -1,62 +1,69 @@
-// lib/authOptions.ts
-import { AuthOptions, User as NextAuthUser } from "next-auth";
+import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { JWT } from "next-auth/jwt";
-import type { Session } from "next-auth";
-
-// 1. Extend the default User type to include your custom 'role' property
-interface User extends NextAuthUser {
-  role?: string;
-}
-
-// 2. Extend the default JWT type to include your custom properties
-interface ExtendedJWT extends JWT {
-  id?: string;
-  role?: string;
-}
+import prisma from "@/lib/prisma";
+import bcrypt from 'bcrypt';
 
 export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 hari
   },
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        recaptchaToken: { label: "reCAPTCHA Token", type: "text" },
       },
       async authorize(credentials) {
-        if (
-          credentials?.username === process.env.ADMIN_USERNAME &&
-          credentials?.password === process.env.ADMIN_PASSWORD
-        ) {
-          return {
-            id: "admin-user",
-            name: process.env.ADMIN_USERNAME,
-            email: "admin@dashboard.com",
-            role: "ADMIN", // Your custom property
-          };
-        } else {
-          console.warn(`Login attempt failed: Invalid username or password.`);
-          throw new Error("Invalid username or password.");
+        if (!credentials?.email || !credentials?.password || !credentials.recaptchaToken) {
+          throw new Error("Email, password, dan token reCAPTCHA wajib diisi.");
         }
+
+        const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${credentials.recaptchaToken}`;
+        const recaptchaResponse = await fetch(verifyUrl, { method: "POST" });
+        const recaptchaData = await recaptchaResponse.json();
+
+        if (!recaptchaData.success) {
+          console.warn("Verifikasi reCAPTCHA gagal:", recaptchaData['error-codes']);
+          throw new Error("Verifikasi reCAPTCHA gagal. Anda mungkin bot.");
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user) { throw new Error("Email tidak ditemukan."); }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!isPasswordValid) { throw new Error("Password salah."); }
+
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        };
       },
     }),
   ],
   callbacks: {
-    // 3. Use the extended types in the callbacks
-    async jwt({ token, user }: { token: ExtendedJWT; user?: User }) {
+    async jwt({ token, user }) {
+      // Saat login pertama kali, objek 'user' akan tersedia
+      // Kita tambahkan properti dari user ke token
       if (user) {
         token.id = user.id;
         token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: ExtendedJWT }) {
+    async session({ session, token }) {
+      // Setiap kali sesi diakses, kita tambahkan properti dari token ke sesi
       if (token && session.user) {
-        // 4. Safely add the properties to the session user
         session.user.id = token.id;
         session.user.role = token.role;
       }
@@ -65,7 +72,7 @@ export const authOptions: AuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/auth/error",
+    error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

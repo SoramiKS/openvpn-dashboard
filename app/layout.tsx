@@ -1,3 +1,4 @@
+import Providers from '@/components/providers';
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -18,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
-        {children}
+      <Providers>{children}</Providers>
         <div className="gtranslate_wrapper"></div>
         <Script id="gtranslate-settings" strategy="afterInteractive">
           {`window.gtranslateSettings = {"default_language":"id","languages":["id","en"],"wrapper_selector":".gtranslate_wrapper"}`}

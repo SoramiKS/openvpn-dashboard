@@ -38,41 +38,48 @@ export default function UserManagementPage() {
     const [userToDelete, setUserToDelete] = useState<SafeUser | null>(null);
     const [editData, setEditData] = useState<EditDataState>({ role: Role.USER, password: '' });
 
-    const fetchUsers = useCallback(async (pageToFetch: number) => {
-        setIsLoading(true);
-        const params = new URLSearchParams({
-            page: pageToFetch.toString(),
-            pageSize: USERS_PER_PAGE.toString(),
-            search: filters.search,
-            role: filters.role,
-        });
-        try {
-            const response = await fetch(`/api/users?${params.toString()}`);
-            if (!response.ok) throw new Error((await response.json()).message || "Gagal mengambil data pengguna.");
-            const { data, total } = await response.json();
-            setUsers(data);
-            setTotalUsers(total);
-        } catch (error: unknown) {
-            if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
-        } finally {
-            setIsLoading(false);
-        }
-    }, [filters, toast]); // Hapus currentPage dari dependensi
-
-    // useEffect untuk mengambil data saat halaman berubah
+    // --- PERBAIKAN: Logika fetch disatukan dalam satu useEffect ---
     useEffect(() => {
-        fetchUsers(currentPage);
-    }, [currentPage, fetchUsers]);
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            const params = new URLSearchParams({
+                page: currentPage.toString(),
+                pageSize: USERS_PER_PAGE.toString(),
+                search: filters.search,
+                role: filters.role,
+            });
+            try {
+                const response = await fetch(`/api/users?${params.toString()}`);
+                if (!response.ok) throw new Error((await response.json()).message || "Gagal mengambil data pengguna.");
+                const { data, total } = await response.json();
+                setUsers(data);
+                setTotalUsers(total);
+            } catch (error: unknown) {
+                if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    // useEffect untuk me-reset halaman saat filter berubah
+        fetchUsers();
+    }, [currentPage, filters, toast]); // Hook ini akan berjalan setiap kali halaman atau filter berubah
+
+    // Efek ini HANYA untuk me-reset halaman ke 1 saat filter berubah
     useEffect(() => {
         setCurrentPage(1);
     }, [filters]);
 
+    // Fungsi fetchUsers yang simpel untuk di-pass sebagai callback
+    const refreshUsers = useCallback(() => {
+        // Reset ke halaman 1 dan filter default, yang akan memicu useEffect di atas
+        setCurrentPage(1); 
+        setFilters({ search: '', role: 'all' });
+    }, []);
+
     const handleEditClick = (user: SafeUser) => { setUserToEdit(user); setEditData({ role: user.role, password: '' }); };
-    const handleUpdateUser = async () => { if (!userToEdit) return; setIsSubmitting(true); try { const payload: Partial<EditDataState> = {}; if (editData.role !== userToEdit.role) { payload.role = editData.role; } if (editData.password) { payload.password = editData.password; } if (Object.keys(payload).length === 0) { toast({ title: "Info", description: "Tidak ada perubahan yang disimpan."}); setUserToEdit(null); return; } const response = await fetch(`/api/users/${userToEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error((await response.json()).message || "Gagal memperbarui pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToEdit.email} berhasil diperbarui.` }); setUserToEdit(null); fetchUsers(currentPage); } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
+    const handleUpdateUser = async () => { if (!userToEdit) return; setIsSubmitting(true); try { const payload: Partial<EditDataState> = {}; if (editData.role !== userToEdit.role) { payload.role = editData.role; } if (editData.password) { payload.password = editData.password; } if (Object.keys(payload).length === 0) { toast({ title: "Info", description: "Tidak ada perubahan yang disimpan."}); setUserToEdit(null); return; } const response = await fetch(`/api/users/${userToEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error((await response.json()).message || "Gagal memperbarui pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToEdit.email} berhasil diperbarui.` }); setUserToEdit(null); refreshUsers(); } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
     const handleDeleteClick = (user: SafeUser) => { setUserToDelete(user); };
-    const handleConfirmDelete = async () => { if (!userToDelete) return; setIsSubmitting(true); try { const response = await fetch(`/api/users/${userToDelete.id}`, { method: 'DELETE' }); if (!response.ok) throw new Error((await response.json()).message || "Gagal menghapus pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToDelete.email} berhasil dihapus.` }); setUserToDelete(null); if (users.length === 1 && currentPage > 1) { const newPage = currentPage - 1; setCurrentPage(newPage); fetchUsers(newPage); } else { fetchUsers(currentPage); } } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
+    const handleConfirmDelete = async () => { if (!userToDelete) return; setIsSubmitting(true); try { const response = await fetch(`/api/users/${userToDelete.id}`, { method: 'DELETE' }); if (!response.ok) throw new Error((await response.json()).message || "Gagal menghapus pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToDelete.email} berhasil dihapus.` }); setUserToDelete(null); if (users.length === 1 && currentPage > 1) { setCurrentPage(currentPage - 1); } else { refreshUsers(); } } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
     
     const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
 
@@ -83,7 +90,7 @@ export default function UserManagementPage() {
                     <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
                     <p className="text-gray-600">Tambah, lihat, dan kelola pengguna sistem.</p>
                 </div>
-                <AddUserDialog onUserAdded={() => fetchUsers(1)} />
+                <AddUserDialog onUserAdded={refreshUsers} />
             </div>
 
             <Card>
