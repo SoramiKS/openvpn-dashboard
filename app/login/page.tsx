@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Loader2, UserPlus } from "lucide-react";
+import { Loader2, Shield, UserPlus } from "lucide-react";
+import ReCAPTCHA from "react-google-recaptcha";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 // --- Komponen untuk Form Login Biasa ---
 const LoginForm = () => {
@@ -16,21 +18,19 @@ const LoginForm = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        if (!recaptchaToken) {
+            setError("Silakan verifikasi bahwa Anda bukan robot.");
+            return;
+        }
         setIsLoading(true);
-
-        const result = await signIn("credentials", {
-            redirect: false,
-            email,
-            password,
-        });
-
+        const result = await signIn("credentials", { redirect: false, email, password, recaptchaToken });
         setIsLoading(false);
-
         if (result?.error) {
             setError(result.error);
         } else if (result?.ok) {
@@ -49,7 +49,10 @@ const LoginForm = () => {
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <Button type="submit" className="w-full py-2.5 text-lg font-semibold" disabled={isLoading}>
+            <div className="flex justify-center">
+                <ReCAPTCHA sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!} onChange={setRecaptchaToken} onExpired={() => setRecaptchaToken(null)} />
+            </div>
+            <Button type="submit" className="w-full py-2.5 text-lg font-semibold" disabled={isLoading || !recaptchaToken}>
                 {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Signing In...</> : "Sign In"}
             </Button>
         </form>
@@ -62,24 +65,28 @@ const SetupForm = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const { toast } = useToast();
 
     const handleCreateAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        if (!recaptchaToken) {
+            setError("Silakan verifikasi bahwa Anda bukan robot.");
+            return;
+        }
         setIsLoading(true);
-
         try {
             const response = await fetch('/api/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, recaptchaToken })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || "Gagal membuat admin.");
 
-            toast({ title: "Admin Berhasil Dibuat!", description: "Silakan login menggunakan akun yang baru saja Anda buat." });
-            window.location.reload(); // Refresh halaman untuk menampilkan form login
+            toast({ title: "Admin Berhasil Dibuat!", description: "Halaman akan dimuat ulang. Silakan login." });
+            setTimeout(() => window.location.reload(), 2000);
         } catch (err: unknown) {
             if (err instanceof Error) setError(err.message);
         } finally {
@@ -98,8 +105,11 @@ const SetupForm = () => {
                 <Label htmlFor="admin-password">Password Admin</Label>
                 <Input id="admin-password" type="password" placeholder="Minimal 8 karakter" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <Button type="submit" className="w-full py-2.5 text-lg font-semibold" disabled={isLoading}>
-                {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating...</> : "Create Admin"}
+            <div className="flex justify-center">
+                <ReCAPTCHA sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!} onChange={setRecaptchaToken} onExpired={() => setRecaptchaToken(null)} />
+            </div>
+            <Button type="submit" className="w-full py-2.5 text-lg font-semibold" disabled={isLoading || !recaptchaToken}>
+                {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Admin...</> : "Create First Admin"}
             </Button>
         </form>
     );
@@ -110,17 +120,12 @@ export default function LoginPage() {
     const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
 
     useEffect(() => {
-        const checkSetup = async () => {
-            try {
-                const response = await fetch('/api/setup');
-                const data = await response.json();
-                setNeedsSetup(data.needsSetup);
-            } catch (error) {
-                console.error("Gagal memeriksa status setup:", error);
-                setNeedsSetup(false); // Default ke form login jika API gagal
-            }
-        };
-        checkSetup();
+        fetch('/api/setup').then(res => res.json()).then(data => {
+            setNeedsSetup(data.needsSetup);
+        }).catch(error => {
+            console.error("Gagal memeriksa status setup:", error);
+            setNeedsSetup(false);
+        });
     }, []);
 
     const TitleIcon = needsSetup ? UserPlus : Shield;
@@ -131,10 +136,8 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
             <Card className="w-full max-w-md shadow-lg rounded-lg overflow-hidden">
                 <CardHeader className="space-y-1 text-center p-6 bg-white border-b">
-                    <div className="flex justify-center mb-4">
-                        <div className="p-3 bg-blue-100 rounded-full shadow-inner">
-                            <TitleIcon className="h-8 w-8 text-blue-600" />
-                        </div>
+                     <div className="flex justify-center mb-4">
+                        <Image src="/logo-c.png" alt="Logo" width={80} height={80} unoptimized />
                     </div>
                     <CardTitle className="text-3xl font-extrabold">{titleText}</CardTitle>
                     <CardDescription className="text-gray-600 mt-2">{descriptionText}</CardDescription>
