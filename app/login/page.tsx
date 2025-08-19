@@ -136,8 +136,8 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
             <Card className="w-full max-w-md shadow-lg rounded-lg overflow-hidden">
                 <CardHeader className="space-y-1 text-center p-6 bg-white border-b">
-                     <div className="flex justify-center mb-4">
-                        <Image src="/logo-c.png" alt="Logo" width={80} height={80} unoptimized />
+                     <div className="flex justify-center mb-4 rounded-full">
+                        <Image src="/logo.svg" alt="Logo" width={80} height={80} unoptimized className="rounded-full" />
                     </div>
                     <CardTitle className="text-3xl font-extrabold">{titleText}</CardTitle>
                     <CardDescription className="text-gray-600 mt-2">{descriptionText}</CardDescription>
