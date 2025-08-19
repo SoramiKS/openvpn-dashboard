@@ -38,8 +38,8 @@ interface NodeFormInput {
 
 // Props yang diterima dari Server Component
 interface NodesClientPageProps {
-    apiKey: string;
-    dashboardUrl: string;
+  apiKey: string;
+  dashboardUrl: string;
 }
 
 // Nama komponen tetap sama, tidak masalah
@@ -63,7 +63,7 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
 
   const fetchNodes = useCallback(async () => {
     if (!nodes.length) {
-        setIsLoading(true);
+      setIsLoading(true);
     }
     try {
       const response = await fetch("/api/nodes");
@@ -116,7 +116,7 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       if (!response.ok) {
         throw new Error(responseData.message || "Gagal menyimpan node baru.");
       }
-      
+
       const createdNode: Node = responseData.node;
 
       if (!createdNode || !createdNode.id || !createdNode.name) {
@@ -128,10 +128,10 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
         title: "Berhasil",
         description: "Node berhasil disimpan. Lanjutkan ke panduan instalasi.",
       });
-      
+
       setIsAddModalOpen(false);
       setNodeForGuide(createdNode);
-      
+
       await fetchNodes();
 
     } catch (error) {
@@ -275,8 +275,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
           <p className="text-gray-600">Kelola node server OpenVPN Anda</p>
         </div>
         <Button onClick={() => {
-            setNewNode({ name: "", ip: "", location: "" });
-            setIsAddModalOpen(true);
+          setNewNode({ name: "", ip: "", location: "" });
+          setIsAddModalOpen(true);
         }}>
           <Plus className="h-4 w-4 mr-2" />
           Tambah Node
@@ -366,8 +366,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                               node.status === NodeStatus.ONLINE
                                 ? "default"
                                 : node.status === NodeStatus.OFFLINE
-                                ? "destructive"
-                                : "secondary"
+                                  ? "destructive"
+                                  : "secondary"
                             }
                           >
                             {node.status}
@@ -378,13 +378,12 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${
-                                    (node.cpuUsage || 0) > 80
+                                  className={`h-2 rounded-full ${(node.cpuUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.cpuUsage || 0) > 60
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
                                   style={{ width: `${node.cpuUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -401,13 +400,12 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${
-                                    (node.ramUsage || 0) > 80
+                                  className={`h-2 rounded-full ${(node.ramUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.ramUsage || 0) > 60
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
                                   style={{ width: `${node.ramUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -520,21 +518,21 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       </Dialog>
 
       <Dialog open={isGuideModalOpen} onOpenChange={(isOpen) => {
-          setIsGuideModalOpen(isOpen);
-          if (!isOpen) {
-              setNodeForGuide(null);
-          }
+        setIsGuideModalOpen(isOpen);
+        if (!isOpen) {
+          setNodeForGuide(null);
+        }
       }}>
         <DialogContent className="max-w-3xl">
-            {nodeForGuide && (
-                <NodeInstallationGuide
-                    nodeName={nodeForGuide.name}
-                    serverId={nodeForGuide.id}
-                    apiKey={apiKey}
-                    dashboardUrl={dashboardUrl}
-                    onFinish={() => setIsGuideModalOpen(false)}
-                />
-            )}
+          {nodeForGuide && (
+            <NodeInstallationGuide
+              nodeName={nodeForGuide.name}
+              serverId={nodeForGuide.id}
+              apiKey={apiKey}
+              dashboardUrl={dashboardUrl}
+              onFinish={() => setIsGuideModalOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

@@ -70,10 +70,10 @@ export default function UserManagementPage() {
     }, [filters]);
 
     const handleEditClick = (user: SafeUser) => { setUserToEdit(user); setEditData({ role: user.role, password: '' }); };
-    const handleUpdateUser = async () => { if (!userToEdit) return; setIsSubmitting(true); try { const payload: Partial<EditDataState> = {}; if (editData.role !== userToEdit.role) { payload.role = editData.role; } if (editData.password) { payload.password = editData.password; } if (Object.keys(payload).length === 0) { toast({ title: "Info", description: "Tidak ada perubahan yang disimpan."}); setUserToEdit(null); return; } const response = await fetch(`/api/users/${userToEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error((await response.json()).message || "Gagal memperbarui pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToEdit.email} berhasil diperbarui.` }); setUserToEdit(null); fetchUsers(currentPage); } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
+    const handleUpdateUser = async () => { if (!userToEdit) return; setIsSubmitting(true); try { const payload: Partial<EditDataState> = {}; if (editData.role !== userToEdit.role) { payload.role = editData.role; } if (editData.password) { payload.password = editData.password; } if (Object.keys(payload).length === 0) { toast({ title: "Info", description: "Tidak ada perubahan yang disimpan." }); setUserToEdit(null); return; } const response = await fetch(`/api/users/${userToEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error((await response.json()).message || "Gagal memperbarui pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToEdit.email} berhasil diperbarui.` }); setUserToEdit(null); fetchUsers(currentPage); } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
     const handleDeleteClick = (user: SafeUser) => { setUserToDelete(user); };
     const handleConfirmDelete = async () => { if (!userToDelete) return; setIsSubmitting(true); try { const response = await fetch(`/api/users/${userToDelete.id}`, { method: 'DELETE' }); if (!response.ok) throw new Error((await response.json()).message || "Gagal menghapus pengguna."); toast({ title: "Berhasil", description: `Pengguna ${userToDelete.email} berhasil dihapus.` }); setUserToDelete(null); if (users.length === 1 && currentPage > 1) { const newPage = currentPage - 1; setCurrentPage(newPage); fetchUsers(newPage); } else { fetchUsers(currentPage); } } catch (error: unknown) { if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" }); } finally { setIsSubmitting(false); } };
-    
+
     const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
 
     return (
@@ -90,7 +90,7 @@ export default function UserManagementPage() {
                 <CardHeader>
                     <div className="flex flex-col md:flex-row gap-4">
                         <Input placeholder="Cari berdasarkan email..." value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} className="flex-grow" />
-                        <Select value={filters.role} onValueChange={(value) => setFilters(prev => ({...prev, role: value}))}>
+                        <Select value={filters.role} onValueChange={(value) => setFilters(prev => ({ ...prev, role: value }))}>
                             <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Peran" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">Semua Peran</SelectItem><SelectItem value={Role.ADMIN}>Admin</SelectItem><SelectItem value={Role.USER}>User</SelectItem></SelectContent>
                         </Select>
@@ -131,8 +131,8 @@ export default function UserManagementPage() {
                 <DialogContent>
                     <DialogHeader><DialogTitle>Edit Pengguna: {userToEdit?.email}</DialogTitle><DialogDescription>Anda bisa mengubah peran atau mengatur ulang password pengguna.</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="role-edit" className="text-right">Peran</Label><Select value={editData.role} onValueChange={(value: Role) => setEditData(prev => ({...prev, role: value}))}><SelectTrigger className="col-span-3"><SelectValue placeholder="Pilih Peran" /></SelectTrigger><SelectContent><SelectItem value={Role.USER}>User</SelectItem><SelectItem value={Role.ADMIN}>Admin</SelectItem></SelectContent></Select></div>
-                        <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="password-edit" className="text-right">Password Baru</Label><Input id="password-edit" type="password" value={editData.password} onChange={(e) => setEditData(prev => ({...prev, password: e.target.value}))} className="col-span-3" placeholder="Kosongkan jika tidak diubah"/></div>
+                        <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="role-edit" className="text-right">Peran</Label><Select value={editData.role} onValueChange={(value: Role) => setEditData(prev => ({ ...prev, role: value }))}><SelectTrigger className="col-span-3"><SelectValue placeholder="Pilih Peran" /></SelectTrigger><SelectContent><SelectItem value={Role.USER}>User</SelectItem><SelectItem value={Role.ADMIN}>Admin</SelectItem></SelectContent></Select></div>
+                        <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="password-edit" className="text-right">Password Baru</Label><Input id="password-edit" type="password" value={editData.password} onChange={(e) => setEditData(prev => ({ ...prev, password: e.target.value }))} className="col-span-3" placeholder="Kosongkan jika tidak diubah" /></div>
                     </div>
                     <DialogFooter><Button variant="outline" onClick={() => setUserToEdit(null)}>Batal</Button><Button onClick={handleUpdateUser} disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Perubahan</Button></DialogFooter>
                 </DialogContent>

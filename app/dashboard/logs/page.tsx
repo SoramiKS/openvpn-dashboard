@@ -37,7 +37,7 @@ export default function LogsPage() {
   const [actionLogPage, setActionLogPage] = useState(1);
   const [totalVpnActivityLogs, setTotalVpnActivityLogs] = useState(0);
   const [vpnActivityLogPage, setVpnActivityLogPage] = useState(1);
-  
+
   const [actionLogFilter, setActionLogFilter] = useState({ nodeId: 'all', action: 'all' });
   const [vpnActivityLogFilter, setVpnActivityLogFilter] = useState<{ nodeId: string; action: string; startDate?: Date; endDate?: Date; }>({ nodeId: 'all', action: 'all' });
 
@@ -60,21 +60,21 @@ export default function LogsPage() {
   const fetchVpnActivityLogs = useCallback(async (page = 1) => {
     setIsVpnLogLoading(true);
     try {
-        const response = await fetch(`/api/activity-logs?page=${page}&pageSize=${LOGS_PER_PAGE}`);
-        if (!response.ok) throw new Error("Gagal mengambil user activity logs");
-        const { data, total } = await response.json();
-        setVpnActivityLogs(data);
-        setTotalVpnActivityLogs(total);
+      const response = await fetch(`/api/activity-logs?page=${page}&pageSize=${LOGS_PER_PAGE}`);
+      if (!response.ok) throw new Error("Gagal mengambil user activity logs");
+      const { data, total } = await response.json();
+      setVpnActivityLogs(data);
+      setTotalVpnActivityLogs(total);
     } catch {
-        toast({ title: "Error", description: "Gagal memuat user activity logs.", variant: "destructive" });
+      toast({ title: "Error", description: "Gagal memuat user activity logs.", variant: "destructive" });
     } finally {
-        setIsVpnLogLoading(false);
+      setIsVpnLogLoading(false);
     }
   }, [toast]);
 
   const fetchNodesForSelect = useCallback(async () => { /* ... (tidak berubah) ... */ try { const response = await fetch("/api/nodes"); if (!response.ok) throw new Error("Gagal mengambil node"); setNodes(await response.json()); } catch { toast({ title: "Error", description: "Gagal memuat node untuk filter.", variant: "destructive", }); } }, [toast]);
 
-  const handleDownloadCsv = () => { /* ... (tidak berubah) ... */ const headers = ["Timestamp", "Node", "Username", "Action", "Public IP", "VPN IP", "Data Received", "Data Sent"]; const rows = filteredVpnActivityLogs.map(log => [ new Date(log.timestamp).toLocaleString(), log.node.name, log.username || "N/A", log.action, log.publicIp || "N/A", log.vpnIp || "N/A", log.bytesReceived?.toString() || "0", log.bytesSent?.toString() || "0" ].map(field => `"${field.replace(/"/g, '""')}"`).join(',')); const csvContent = [headers.join(','), ...rows].join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); link.setAttribute('href', url); link.setAttribute('download', `user-activity-logs-${new Date().toISOString().split('T')[0]}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+  const handleDownloadCsv = () => { /* ... (tidak berubah) ... */ const headers = ["Timestamp", "Node", "Username", "Action", "Public IP", "VPN IP", "Data Received", "Data Sent"]; const rows = filteredVpnActivityLogs.map(log => [new Date(log.timestamp).toLocaleString(), log.node.name, log.username || "N/A", log.action, log.publicIp || "N/A", log.vpnIp || "N/A", log.bytesReceived?.toString() || "0", log.bytesSent?.toString() || "0"].map(field => `"${field.replace(/"/g, '""')}"`).join(',')); const csvContent = [headers.join(','), ...rows].join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); link.setAttribute('href', url); link.setAttribute('download', `user-activity-logs-${new Date().toISOString().split('T')[0]}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
 
   // --- MODIFIKASI: useEffect memanggil fetch dengan halaman saat ini ---
   useEffect(() => { fetchActionLogs(actionLogPage); }, [fetchActionLogs, actionLogPage]);
@@ -118,43 +118,43 @@ export default function LogsPage() {
         </CardContent>
         {/* --- BARU: Kontrol Paginasi --- */}
         <CardFooter>
-            <Pagination>
-                <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage > 1) setActionLogPage(actionLogPage - 1); }} /></PaginationItem>
-                    <PaginationItem><PaginationLink href="#">{actionLogPage} / {totalActionLogPages}</PaginationLink></PaginationItem>
-                    <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage < totalActionLogPages) setActionLogPage(actionLogPage + 1); }} /></PaginationItem>
-                </PaginationContent>
-            </Pagination>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage > 1) setActionLogPage(actionLogPage - 1); }} /></PaginationItem>
+              <PaginationItem><PaginationLink href="#">{actionLogPage} / {totalActionLogPages}</PaginationLink></PaginationItem>
+              <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage < totalActionLogPages) setActionLogPage(actionLogPage + 1); }} /></PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </CardFooter>
       </Card>
 
       <Card>
         <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle>User Activity</CardTitle>
-                <Button variant="outline" onClick={handleDownloadCsv} disabled={filteredVpnActivityLogs.length === 0}><Download className="h-4 w-4 mr-2" /> Download CSV</Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-4">
-                <Select value={vpnActivityLogFilter.nodeId} onValueChange={(value) => setVpnActivityLogFilter(prev => ({ ...prev, nodeId: value }))}><SelectTrigger className="lg:col-span-1"><SelectValue placeholder="Filter Node" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Node</SelectItem>{nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
-                <Select value={vpnActivityLogFilter.action} onValueChange={(value) => setVpnActivityLogFilter(prev => ({ ...prev, action: value }))}><SelectTrigger className="lg:col-span-1"><SelectValue placeholder="Filter Aksi" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Aksi</SelectItem><SelectItem value="CONNECT">CONNECT</SelectItem><SelectItem value="DISCONNECT">DISCONNECT</SelectItem></SelectContent></Select>
-                <Popover><PopoverTrigger asChild><Button variant={"outline"} className="w-full justify-start text-left font-normal lg:col-span-1"><CalendarIcon className="mr-2 h-4 w-4" />{vpnActivityLogFilter.startDate ? format(vpnActivityLogFilter.startDate, "PPP") : <span>Tanggal Mulai</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={vpnActivityLogFilter.startDate} onSelect={(date) => setVpnActivityLogFilter(prev => ({ ...prev, startDate: date || undefined }))} initialFocus /></PopoverContent></Popover>
-                <Popover><PopoverTrigger asChild><Button variant={"outline"} className="w-full justify-start text-left font-normal lg:col-span-1"><CalendarIcon className="mr-2 h-4 w-4" />{vpnActivityLogFilter.endDate ? format(vpnActivityLogFilter.endDate, "PPP") : <span>Tanggal Akhir</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={vpnActivityLogFilter.endDate} onSelect={(date) => setVpnActivityLogFilter(prev => ({ ...prev, endDate: date || undefined }))} initialFocus /></PopoverContent></Popover>
-                <Button variant="ghost" className="lg:col-span-1" onClick={() => setVpnActivityLogFilter({ nodeId: 'all', action: 'all', startDate: undefined, endDate: undefined })}><XCircle className="h-4 w-4 mr-2" /> Bersihkan</Button>
-            </div>
+          <div className="flex items-center justify-between">
+            <CardTitle>User Activity</CardTitle>
+            <Button variant="outline" onClick={handleDownloadCsv} disabled={filteredVpnActivityLogs.length === 0}><Download className="h-4 w-4 mr-2" /> Download CSV</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-4">
+            <Select value={vpnActivityLogFilter.nodeId} onValueChange={(value) => setVpnActivityLogFilter(prev => ({ ...prev, nodeId: value }))}><SelectTrigger className="lg:col-span-1"><SelectValue placeholder="Filter Node" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Node</SelectItem>{nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={vpnActivityLogFilter.action} onValueChange={(value) => setVpnActivityLogFilter(prev => ({ ...prev, action: value }))}><SelectTrigger className="lg:col-span-1"><SelectValue placeholder="Filter Aksi" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Aksi</SelectItem><SelectItem value="CONNECT">CONNECT</SelectItem><SelectItem value="DISCONNECT">DISCONNECT</SelectItem></SelectContent></Select>
+            <Popover><PopoverTrigger asChild><Button variant={"outline"} className="w-full justify-start text-left font-normal lg:col-span-1"><CalendarIcon className="mr-2 h-4 w-4" />{vpnActivityLogFilter.startDate ? format(vpnActivityLogFilter.startDate, "PPP") : <span>Tanggal Mulai</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={vpnActivityLogFilter.startDate} onSelect={(date) => setVpnActivityLogFilter(prev => ({ ...prev, startDate: date || undefined }))} initialFocus /></PopoverContent></Popover>
+            <Popover><PopoverTrigger asChild><Button variant={"outline"} className="w-full justify-start text-left font-normal lg:col-span-1"><CalendarIcon className="mr-2 h-4 w-4" />{vpnActivityLogFilter.endDate ? format(vpnActivityLogFilter.endDate, "PPP") : <span>Tanggal Akhir</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={vpnActivityLogFilter.endDate} onSelect={(date) => setVpnActivityLogFilter(prev => ({ ...prev, endDate: date || undefined }))} initialFocus /></PopoverContent></Popover>
+            <Button variant="ghost" className="lg:col-span-1" onClick={() => setVpnActivityLogFilter({ nodeId: 'all', action: 'all', startDate: undefined, endDate: undefined })}><XCircle className="h-4 w-4 mr-2" /> Bersihkan</Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {isVpnLogLoading ? ( <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> ) : ( <Table> <TableHeader> <TableRow> <TableHead>Timestamp</TableHead> <TableHead>Node</TableHead> <TableHead>Username</TableHead> <TableHead>Action</TableHead> <TableHead>Public IP</TableHead> <TableHead>VPN IP</TableHead> <TableHead>Data Received</TableHead> <TableHead>Data Sent</TableHead> </TableRow> </TableHeader> <TableBody> {filteredVpnActivityLogs.length === 0 ? ( <TableRow><TableCell colSpan={8} className="text-center py-8">Tidak ada aktivitas yang cocok dengan filter.</TableCell></TableRow> ) : ( filteredVpnActivityLogs.map((log) => ( <TableRow key={log.id}> <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell> <TableCell>{log.node.name}</TableCell> <TableCell>{log.username || 'N/A'}</TableCell> <TableCell><Badge variant={log.action === 'CONNECT' ? 'default' : 'secondary'}>{log.action}</Badge></TableCell> <TableCell>{log.publicIp || 'N/A'}</TableCell> <TableCell>{log.vpnIp || 'N/A'}</TableCell> <TableCell>{formatBytes(log.bytesReceived)}</TableCell> <TableCell>{formatBytes(log.bytesSent)}</TableCell> </TableRow> )) )} </TableBody> </Table> )}
+          {isVpnLogLoading ? (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>) : (<Table> <TableHeader> <TableRow> <TableHead>Timestamp</TableHead> <TableHead>Node</TableHead> <TableHead>Username</TableHead> <TableHead>Action</TableHead> <TableHead>Public IP</TableHead> <TableHead>VPN IP</TableHead> <TableHead>Data Received</TableHead> <TableHead>Data Sent</TableHead> </TableRow> </TableHeader> <TableBody> {filteredVpnActivityLogs.length === 0 ? (<TableRow><TableCell colSpan={8} className="text-center py-8">Tidak ada aktivitas yang cocok dengan filter.</TableCell></TableRow>) : (filteredVpnActivityLogs.map((log) => (<TableRow key={log.id}> <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell> <TableCell>{log.node.name}</TableCell> <TableCell>{log.username || 'N/A'}</TableCell> <TableCell><Badge variant={log.action === 'CONNECT' ? 'default' : 'secondary'}>{log.action}</Badge></TableCell> <TableCell>{log.publicIp || 'N/A'}</TableCell> <TableCell>{log.vpnIp || 'N/A'}</TableCell> <TableCell>{formatBytes(log.bytesReceived)}</TableCell> <TableCell>{formatBytes(log.bytesSent)}</TableCell> </TableRow>)))} </TableBody> </Table>)}
         </CardContent>
         {/* --- BARU: Kontrol Paginasi --- */}
         <CardFooter>
-            <Pagination>
-                <PaginationContent>
-                    <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage > 1) setVpnActivityLogPage(vpnActivityLogPage - 1); }} /></PaginationItem>
-                    <PaginationItem><PaginationLink href="#">{vpnActivityLogPage} / {totalVpnActivityLogPages}</PaginationLink></PaginationItem>
-                    <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage < totalVpnActivityLogPages) setVpnActivityLogPage(vpnActivityLogPage + 1); }} /></PaginationItem>
-                </PaginationContent>
-            </Pagination>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage > 1) setVpnActivityLogPage(vpnActivityLogPage - 1); }} /></PaginationItem>
+              <PaginationItem><PaginationLink href="#">{vpnActivityLogPage} / {totalVpnActivityLogPages}</PaginationLink></PaginationItem>
+              <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage < totalVpnActivityLogPages) setVpnActivityLogPage(vpnActivityLogPage + 1); }} /></PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </CardFooter>
       </Card>
     </div>

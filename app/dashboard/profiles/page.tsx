@@ -50,9 +50,9 @@ interface NodeForSelect {
 type ExtendedVpnUser = VpnUser & { node: { name: string } };
 
 type FilterState = {
-    searchTerm: string;
-    nodeId: string;
-    status?: VpnCertificateStatus | 'all';
+  searchTerm: string;
+  nodeId: string;
+  status?: VpnCertificateStatus | 'all';
 };
 
 const PROFILES_PER_PAGE = 10;
@@ -88,7 +88,7 @@ export default function VpnProfilesPage() {
 
   const filteredValidUsers = useMemo(() => { /* ... (tidak berubah) ... */ return vpnUsers.filter(user => user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING).filter(user => { const matchesSearch = user.username.toLowerCase().includes(validUsersFilter.searchTerm.toLowerCase()); const matchesNode = validUsersFilter.nodeId === 'all' || user.nodeId === validUsersFilter.nodeId; return matchesSearch && matchesNode; }); }, [vpnUsers, validUsersFilter]);
   const filteredRevokedUsers = useMemo(() => { /* ... (tidak berubah) ... */ return vpnUsers.filter(user => user.status === VpnCertificateStatus.REVOKED || user.status === VpnCertificateStatus.EXPIRED || user.status === VpnCertificateStatus.UNKNOWN).filter(user => { const matchesSearch = user.username.toLowerCase().includes(revokedUsersFilter.searchTerm.toLowerCase()); const matchesNode = revokedUsersFilter.nodeId === 'all' || user.nodeId === revokedUsersFilter.nodeId; const matchesStatus = revokedUsersFilter.status === 'all' || (revokedUsersFilter.status && user.status === revokedUsersFilter.status); return matchesSearch && matchesNode && matchesStatus; }); }, [vpnUsers, revokedUsersFilter]);
-  
+
   const paginatedValidUsers = useMemo(() => { const startIndex = (validUsersPage - 1) * PROFILES_PER_PAGE; return filteredValidUsers.slice(startIndex, startIndex + PROFILES_PER_PAGE); }, [filteredValidUsers, validUsersPage]);
   const paginatedRevokedUsers = useMemo(() => { const startIndex = (revokedUsersPage - 1) * PROFILES_PER_PAGE; return filteredRevokedUsers.slice(startIndex, startIndex + PROFILES_PER_PAGE); }, [filteredRevokedUsers, revokedUsersPage]);
 
@@ -117,27 +117,27 @@ export default function VpnProfilesPage() {
         <CardTitle>{title}</CardTitle>
         {/* --- MODIFIKASI: Filter hanya untuk Admin --- */}
         {session?.user?.role === 'ADMIN' && (
-            <div className="flex flex-col md:flex-row gap-4 pt-4">
-                <Input placeholder="Cari nama pengguna..." value={filterState.searchTerm} onChange={(e) => { setFilterState({ ...filterState, searchTerm: e.target.value }); setPage(1); }} className="flex-grow" />
-                <Select value={filterState.nodeId} onValueChange={(value) => { setFilterState({ ...filterState, nodeId: value }); setPage(1); }}>
-                    <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Node" /></SelectTrigger>
-                    <SelectContent><SelectItem value="all">Semua Node</SelectItem>{nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent>
-                </Select>
-                {isRevokedTable && (
-                    <Select value={filterState.status || 'all'} onValueChange={(value) => { setFilterState({ ...filterState, status: value as VpnCertificateStatus | 'all' }); setPage(1); }}>
-                        <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Status" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Semua Status</SelectItem>
-                            <SelectItem value={VpnCertificateStatus.REVOKED}>REVOKED</SelectItem>
-                            <SelectItem value={VpnCertificateStatus.EXPIRED}>EXPIRED</SelectItem>
-                            <SelectItem value={VpnCertificateStatus.UNKNOWN}>UNKNOWN</SelectItem>
-                        </SelectContent>
-                    </Select>
-                )}
-                <Button variant="ghost" onClick={() => { setFilterState({ searchTerm: '', nodeId: 'all', status: 'all' }); setPage(1); }}>
-                    <XCircle className="h-4 w-4 mr-2" /> Bersihkan
-                </Button>
-            </div>
+          <div className="flex flex-col md:flex-row gap-4 pt-4">
+            <Input placeholder="Cari nama pengguna..." value={filterState.searchTerm} onChange={(e) => { setFilterState({ ...filterState, searchTerm: e.target.value }); setPage(1); }} className="flex-grow" />
+            <Select value={filterState.nodeId} onValueChange={(value) => { setFilterState({ ...filterState, nodeId: value }); setPage(1); }}>
+              <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Node" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Semua Node</SelectItem>{nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent>
+            </Select>
+            {isRevokedTable && (
+              <Select value={filterState.status || 'all'} onValueChange={(value) => { setFilterState({ ...filterState, status: value as VpnCertificateStatus | 'all' }); setPage(1); }}>
+                <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value={VpnCertificateStatus.REVOKED}>REVOKED</SelectItem>
+                  <SelectItem value={VpnCertificateStatus.EXPIRED}>EXPIRED</SelectItem>
+                  <SelectItem value={VpnCertificateStatus.UNKNOWN}>UNKNOWN</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="ghost" onClick={() => { setFilterState({ searchTerm: '', nodeId: 'all', status: 'all' }); setPage(1); }}>
+              <XCircle className="h-4 w-4 mr-2" /> Bersihkan
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -145,7 +145,7 @@ export default function VpnProfilesPage() {
           <TableHeader><TableRow><TableHead>Nama Pengguna</TableHead><TableHead>Node</TableHead><TableHead>Status Sertifikat</TableHead><TableHead>Koneksi</TableHead><TableHead>Kadaluarsa</TableHead><TableHead>Dibuat</TableHead><TableHead>Terakhir Terhubung</TableHead>{isRevokedTable && <TableHead>Tanggal Dicabut</TableHead>}<TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
           <TableBody>
             {isLoading ? (
-                <TableRow><TableCell colSpan={isRevokedTable ? 9 : 8} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={isRevokedTable ? 9 : 8} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
             ) : profiles.length === 0 ? (
               <TableRow><TableCell colSpan={isRevokedTable ? 9 : 8} className="text-center py-8">{noDataMessage}</TableCell></TableRow>
             ) : (
@@ -161,9 +161,9 @@ export default function VpnProfilesPage() {
                   {isRevokedTable && (<TableCell>{user.revocationDate ? new Date(user.revocationDate).toLocaleString() : 'N/A'}</TableCell>)}
                   <TableCell>
                     <div className="flex space-x-2 justify-end">
-                      {user.ovpnFileContent && user.status === VpnCertificateStatus.VALID ? ( <Button variant="outline" size="sm" onClick={() => handleDownloadOvpn(user.ovpnFileContent, user.username)} disabled={isSubmitting}><Download className="h-4 w-4 mr-1" /> Unduh</Button> ) : ( <Button variant="outline" size="sm" disabled title="File OVPN belum tersedia"><Download className="h-4 w-4 mr-1" /> Unduh</Button> )}
+                      {user.ovpnFileContent && user.status === VpnCertificateStatus.VALID ? (<Button variant="outline" size="sm" onClick={() => handleDownloadOvpn(user.ovpnFileContent, user.username)} disabled={isSubmitting}><Download className="h-4 w-4 mr-1" /> Unduh</Button>) : (<Button variant="outline" size="sm" disabled title="File OVPN belum tersedia"><Download className="h-4 w-4 mr-1" /> Unduh</Button>)}
                       {/* --- MODIFIKASI: Tombol Cabut hanya untuk Admin --- */}
-                      {session?.user?.role === 'ADMIN' && (user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING) && ( <Button variant="destructive" size="sm" onClick={() => handleRevokeClick(user)} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />} Cabut</Button> )}
+                      {session?.user?.role === 'ADMIN' && (user.status === VpnCertificateStatus.VALID || user.status === VpnCertificateStatus.PENDING) && (<Button variant="destructive" size="sm" onClick={() => handleRevokeClick(user)} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />} Cabut</Button>)}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -172,7 +172,7 @@ export default function VpnProfilesPage() {
           </TableBody>
         </Table>
       </CardContent>
-      {totalPage > 1 && ( <CardFooter> <Pagination> <PaginationContent> <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setPage(currentPage - 1); }} /></PaginationItem> <PaginationItem><PaginationLink href="#">{currentPage} / {totalPage}</PaginationLink></PaginationItem> <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPage) setPage(currentPage + 1); }} /></PaginationItem> </PaginationContent> </Pagination> </CardFooter> )}
+      {totalPage > 1 && (<CardFooter> <Pagination> <PaginationContent> <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setPage(currentPage - 1); }} /></PaginationItem> <PaginationItem><PaginationLink href="#">{currentPage} / {totalPage}</PaginationLink></PaginationItem> <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPage) setPage(currentPage + 1); }} /></PaginationItem> </PaginationContent> </Pagination> </CardFooter>)}
     </Card>
   );
 
@@ -185,28 +185,28 @@ export default function VpnProfilesPage() {
         </div>
         {/* --- MODIFIKASI: Tombol Buat Profil hanya untuk Admin --- */}
         {session?.user?.role === 'ADMIN' && (
-            <Button onClick={() => setIsAddModalOpen(true)} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />} Buat Profil
-            </Button>
+          <Button onClick={() => setIsAddModalOpen(true)} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />} Buat Profil
+          </Button>
         )}
       </div>
-      
-      {renderProfileTable( paginatedValidUsers, "Daftar Profil Pengguna Aktif", "Tidak ada profil aktif yang cocok dengan filter.", validUsersFilter, setValidUsersFilter, validUsersPage, totalValidPages, setValidUsersPage )}
+
+      {renderProfileTable(paginatedValidUsers, "Daftar Profil Pengguna Aktif", "Tidak ada profil aktif yang cocok dengan filter.", validUsersFilter, setValidUsersFilter, validUsersPage, totalValidPages, setValidUsersPage)}
       <div className="pt-8"></div>
-      {renderProfileTable( paginatedRevokedUsers, "Daftar Profil Pengguna Dicabut/Kadaluarsa", "Tidak ada profil dicabut yang cocok dengan filter.", revokedUsersFilter, setRevokedUsersFilter, revokedUsersPage, totalRevokedPages, setRevokedUsersPage, true )}
-      
+      {renderProfileTable(paginatedRevokedUsers, "Daftar Profil Pengguna Dicabut/Kadaluarsa", "Tidak ada profil dicabut yang cocok dengan filter.", revokedUsersFilter, setRevokedUsersFilter, revokedUsersPage, totalRevokedPages, setRevokedUsersPage, true)}
+
       {/* Dialog hanya akan bisa dibuka oleh Admin, jadi tidak perlu proteksi tambahan */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader><DialogTitle>Buat Profil VPN Baru</DialogTitle><DialogDescription>Masukkan nama pengguna dan pilih node.</DialogDescription></DialogHeader>
-            <div className="grid gap-4 py-4"><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="username" className="text-right">Nama Pengguna</Label><Input id="username" value={newProfile.username} onChange={(e) => setNewProfile({ ...newProfile, username: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="node" className="text-right">Node</Label><Select value={newProfile.nodeId} onValueChange={(value) => setNewProfile({ ...newProfile, nodeId: value })} disabled={isSubmitting || nodes.length === 0}><SelectTrigger className="col-span-3"><SelectValue placeholder={nodes.length > 0 ? "Pilih Node" : "Tidak ada node"} /></SelectTrigger><SelectContent>{nodes.map((node) => (<SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>))}</SelectContent></Select></div></div>
-            <DialogFooter><Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isSubmitting}>Batal</Button><Button onClick={handleAddProfile} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Buat Profil</Button></DialogFooter>
+          <DialogHeader><DialogTitle>Buat Profil VPN Baru</DialogTitle><DialogDescription>Masukkan nama pengguna dan pilih node.</DialogDescription></DialogHeader>
+          <div className="grid gap-4 py-4"><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="username" className="text-right">Nama Pengguna</Label><Input id="username" value={newProfile.username} onChange={(e) => setNewProfile({ ...newProfile, username: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="node" className="text-right">Node</Label><Select value={newProfile.nodeId} onValueChange={(value) => setNewProfile({ ...newProfile, nodeId: value })} disabled={isSubmitting || nodes.length === 0}><SelectTrigger className="col-span-3"><SelectValue placeholder={nodes.length > 0 ? "Pilih Node" : "Tidak ada node"} /></SelectTrigger><SelectContent>{nodes.map((node) => (<SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>))}</SelectContent></Select></div></div>
+          <DialogFooter><Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isSubmitting}>Batal</Button><Button onClick={handleAddProfile} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Buat Profil</Button></DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={isRevokeModalOpen} onOpenChange={setIsRevokeModalOpen}>
         <DialogContent>
-            <DialogHeader><DialogTitle>Konfirmasi Pencabutan</DialogTitle><DialogDescription>{userToRevoke ? `Apakah Anda yakin ingin mencabut profil VPN untuk ${userToRevoke.username}?` : ''}</DialogDescription></DialogHeader>
-            <DialogFooter><Button variant="outline" onClick={() => { setIsRevokeModalOpen(false); setUserToRevoke(null); }}>Batal</Button><Button variant="destructive" onClick={handleConfirmRevoke} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cabut"}</Button></DialogFooter>
+          <DialogHeader><DialogTitle>Konfirmasi Pencabutan</DialogTitle><DialogDescription>{userToRevoke ? `Apakah Anda yakin ingin mencabut profil VPN untuk ${userToRevoke.username}?` : ''}</DialogDescription></DialogHeader>
+          <DialogFooter><Button variant="outline" onClick={() => { setIsRevokeModalOpen(false); setUserToRevoke(null); }}>Batal</Button><Button variant="destructive" onClick={handleConfirmRevoke} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cabut"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
