@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
-      <Providers>{children}</Providers>
+        <Providers>{children}</Providers>
         <div className="gtranslate_wrapper"></div>
         <Script id="gtranslate-settings" strategy="afterInteractive">
           {`window.gtranslateSettings = {"default_language":"id","languages":["id","en"],"wrapper_selector":".gtranslate_wrapper"}`}

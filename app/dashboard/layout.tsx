@@ -43,9 +43,9 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-6">
-                  <SessionProvider>
-          {children}
-        </SessionProvider>
+          <SessionProvider>
+            {children}
+          </SessionProvider>
         </main>
       </div>
     </div>
