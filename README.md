@@ -1,7 +1,7 @@
 # 🌐 OpenVPN Centralized Dashboard
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-13-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-blue?logo=prisma)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-DB-316192?logo=postgresql)
 ![Tailwind](https://img.shields.io/badge/TailwindCSS-CSS-38b2ac?logo=tailwindcss)
