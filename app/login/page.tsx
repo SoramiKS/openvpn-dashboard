@@ -128,7 +128,6 @@ export default function LoginPage() {
     });
   }, []);
 
-  const TitleIcon = needsSetup ? UserPlus : Shield;
   const titleText = needsSetup ? "Setup Admin Pertama" : "OpenVPN Manager";
   const descriptionText = needsSetup ? "Database kosong. Silakan buat akun admin pertama." : "Masuk ke akun Anda untuk mengelola VPN Anda.";
 

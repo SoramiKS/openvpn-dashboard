@@ -8,7 +8,7 @@ import { randomBytes } from 'crypto';
 import { Prisma } from "@prisma/client"; // Import Prisma for error types
 
 // Definisikan ambang batas waktu untuk menganggap node offline (misal: 5 menit)
-const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 menit dalam milidetik
+const OFFLINE_THRESHOLD_MS = 20 * 1000; // 5 menit dalam milidetik
 
 // Definisikan tipe yang sesuai dengan field yang dipilih dari Prisma
 type SelectedNodeFields = {
@@ -137,17 +137,17 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) { // Use 'unknown' for better type safety
     console.error('Error creating node:', error);
-    
+
     // Check for specific Prisma errors
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-            return NextResponse.json({ message: 'A node with this name or IP already exists.' }, { status: 409 });
-        }
+      if (error.code === 'P2002') {
+        return NextResponse.json({ message: 'A node with this name or IP already exists.' }, { status: 409 });
+      }
     }
-    
+
     // Check for generic Error
     if (error instanceof Error) {
-        return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
+      return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
     }
 
     // Fallback for non-Error types

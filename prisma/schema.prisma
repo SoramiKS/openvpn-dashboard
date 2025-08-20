@@ -19,7 +19,8 @@ enum NodeStatus {
   ONLINE
   OFFLINE
   UNKNOWN
-  ERROR // Tambahkan status ERROR untuk kasus agen gagal melaporkan atau masalah lain
+  ERROR
+  DELETING
 }
 
 enum VpnCertificateStatus {
@@ -33,8 +34,9 @@ enum VpnCertificateStatus {
 enum ActionType {
   CREATE_USER
   REVOKE_USER
-  RESTART_NODE // Contoh action baru
-  GET_LATEST_OVPN // Untuk mengambil OVPN file yang sudah ada
+  RESTART_NODE
+  GET_LATEST_OVPN
+  DECOMMISSION_AGENT
 }
 
 enum ActionStatus {
@@ -110,7 +112,7 @@ model ActionLog {
   message         String?      // Pesan detail dari agen (misal: "User created successfully")
   
   nodeId          String       // Setiap aksi harus ditujukan ke Node tertentu
-  node            Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade) // Jika node dihapus, log aksinya juga dihapus
+  node            Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   
   vpnUserId       String?      // Opsional, jika aksi terkait dengan VpnUser
   vpnUser         VpnUser?     @relation(fields: [vpnUserId], references: [id], onDelete: SetNull) // SetNull jika VpnUser dihapus
@@ -137,6 +139,6 @@ model VpnActivityLog {
   createdAt     DateTime  @default(now())
 
   // Relation to the Node (server)
-  node          Node      @relation(fields: [nodeId], references: [id])
+  node          Node      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   nodeId        String
 }

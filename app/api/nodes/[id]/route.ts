@@ -2,131 +2,98 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { Prisma } from "@prisma/client";
+import { Prisma, ActionType, NodeStatus } from "@prisma/client";
 
-// Interface for the request body
-interface UpdateNodeRequestBody {
-  name?: string;
-  ip?: string;
-  location?: string;
-}
-
-// This defines the correct handler type for Next.js 15,
-// where the params object is a Promise.
-type ApiRouteHandler = (
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) => Promise<NextResponse>;
-
-
-// Apply the defined type to the PUT handler.
-export const PUT: ApiRouteHandler = async (req, context) => {
-  // In Next.js 15, you must await the params.
-  const { id } = await context.params;
-
+// --- Handler untuk mengedit/memperbarui Node ---
+export async function PUT(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json(
-      { message: "Unauthorized: Not logged in." },
-      { status: 401 }
-    );
+
+  if (session?.user?.role !== 'ADMIN') {
+    return NextResponse.json({ message: "Akses ditolak" }, { status: 403 });
   }
 
   try {
-    const body: UpdateNodeRequestBody = await req.json();
+    // PERBAIKAN: Ambil ID dari URL, bukan dari argumen kedua
+    const nodeId = request.nextUrl.pathname.split('/').pop();
+    if (!nodeId) {
+        return NextResponse.json({ message: "ID Node tidak ditemukan di URL." }, { status: 400 });
+    }
+
+    const body = await request.json();
     const { name, ip, location } = body;
 
     if (!name?.trim() || !ip?.trim()) {
-      return NextResponse.json(
-        { message: "Node name and IP are required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Nama dan IP node wajib diisi." }, { status: 400 });
     }
 
     const updatedNode = await prisma.node.update({
-      where: { id },
-      data: {
-        name,
-        ip,
-        location,
-        updatedAt: new Date(),
-      },
+      where: { id: nodeId },
+      data: { name, ip, location },
     });
 
-    return NextResponse.json(
-      { message: "Node updated successfully.", node: updatedNode },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Node berhasil diperbarui.", node: updatedNode }, { status: 200 });
+
   } catch (error: unknown) {
-    console.error("Error updating node:", error);
-    // Check for specific Prisma errors first
+    console.error("Error saat memperbarui node:", error);
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
-        return NextResponse.json({ message: "Node not found." }, { status: 404 });
+        return NextResponse.json({ message: "Node tidak ditemukan." }, { status: 404 });
       }
       if (error.code === "P2002") {
-        return NextResponse.json(
-          { message: "A node with that name or IP already exists." },
-          { status: 409 }
-        );
+        return NextResponse.json({ message: "Node dengan nama atau IP tersebut sudah ada." }, { status: 409 });
       }
     }
-    // Then check for a generic Error
-    if (error instanceof Error) {
-        return NextResponse.json(
-            { message: "Internal server error", error: error.message },
-            { status: 500 }
-        );
-    }
-    // Fallback for any other type of error
-    return NextResponse.json(
-        { message: "An unknown internal server error occurred." },
-        { status: 500 }
-    );
+    return NextResponse.json({ message: "Terjadi kesalahan internal pada server." }, { status: 500 });
   }
-};
+}
 
-// Apply the defined type to the DELETE handler.
-export const DELETE: ApiRouteHandler = async (req, context) => {
-  // In Next.js 15, you must await the params.
-  const { id } = await context.params;
-
+// --- Handler untuk menghapus Node (Soft Delete) ---
+export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json(
-      { message: "Unauthorized: Not logged in." },
-      { status: 401 }
-    );
+
+  if (session?.user?.role !== 'ADMIN') {
+    return NextResponse.json({ message: "Akses ditolak" }, { status: 403 });
   }
 
   try {
-    const deletedNode = await prisma.node.delete({
-      where: { id },
+    // PERBAIKAN: Ambil ID dari URL, bukan dari argumen kedua
+    const nodeIdToDelete = request.nextUrl.pathname.split('/').pop();
+    if (!nodeIdToDelete) {
+        return NextResponse.json({ message: "ID Node tidak ditemukan di URL." }, { status: 400 });
+    }
+    
+    const node = await prisma.node.findUnique({
+      where: { id: nodeIdToDelete },
     });
 
-    return NextResponse.json(
-      { message: "Node deleted successfully.", node: deletedNode },
-      { status: 200 }
-    );
+    if (!node) {
+      return NextResponse.json({ message: "Node tidak ditemukan." }, { status: 404 });
+    }
+
+    await prisma.actionLog.create({
+      data: {
+        nodeId: nodeIdToDelete,
+        action: ActionType.DECOMMISSION_AGENT,
+        status: 'PENDING',
+        details: `Perintah penghapusan mandiri dikirim ke agen di node ${node.name}.`
+      }
+    });
+
+    const updatedNode = await prisma.node.update({
+      where: { id: nodeIdToDelete },
+      data: { status: NodeStatus.DELETING },
+    });
+
+    return NextResponse.json({ 
+        message: `Perintah penghapusan untuk node ${node.name} berhasil dikirim.`, 
+        node: updatedNode 
+    }, { status: 200 });
+
   } catch (error: unknown) {
-    console.error("Error deleting node:", error);
-    // Check for specific Prisma errors first
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2025") {
-            return NextResponse.json({ message: "Node not found." }, { status: 404 });
-        }
+    console.error("Error saat mengirim perintah hapus:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return NextResponse.json({ message: "Node tidak ditemukan." }, { status: 404 });
     }
-    // Then check for a generic Error
-    if (error instanceof Error) {
-        return NextResponse.json(
-            { message: "Internal server error", error: error.message },
-            { status: 500 }
-        );
-    }
-    // Fallback for any other type of error
-    return NextResponse.json(
-        { message: "An unknown internal server error occurred." },
-        { status: 500 }
-    );
+    return NextResponse.json({ message: "Terjadi kesalahan internal pada server." }, { status: 500 });
   }
-};
+}

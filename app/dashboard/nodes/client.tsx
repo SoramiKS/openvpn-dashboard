@@ -65,6 +65,9 @@ export default function NodesClientPage({
   const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(
     null
   );
+  // Di dalam komponen NodesPage Anda
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null); // Ganti 'Node' dengan tipe data node Anda
 
   const fetchNodes = useCallback(async () => {
     if (!nodes.length) {
@@ -225,57 +228,47 @@ export default function NodesClientPage({
     setEditedNode(null);
   };
 
-  const handleDeleteNode = async (id: string) => {
-    toast({
-      title: "Konfirmasi penghapusan",
-      description:
-        "Apakah Anda yakin ingin menghapus node ini? Tindakan ini tidak dapat dibatalkan.",
-      variant: "destructive",
-      action: (
-        <Button
-          variant="ghost"
-          className="text-white hover:bg-white/20"
-          onClick={async () => {
-            setIsSubmitting(true);
-            try {
-              const response = await fetch(`/api/nodes/${id}`, {
-                method: "DELETE",
-              });
+  // Fungsi untuk membuka dialog
+  const handleDeleteClick = (node: Node) => {
+    // Ganti 'Node' dengan tipe data node Anda
+    setNodeToDelete(node);
+    setIsDeleteModalOpen(true);
+  };
 
-              if (!response.ok) {
-                let errorData = { message: "Failed to delete node." };
-                try {
-                  errorData = await response.json();
-                } catch (jsonError) {
-                  console.error("Failed to parse JSON error:", jsonError);
-                }
-                throw new Error(errorData.message);
-              }
+  // Fungsi yang berisi logika fetch untuk menghapus node
+  const handleConfirmDelete = async () => {
+    if (!nodeToDelete) return;
 
-              toast({
-                title: "Success",
-                description: "Node deleted successfully!",
-              });
-              await fetchNodes();
-            } catch (error) {
-              console.error("Error deleting node:", error);
-              toast({
-                title: "Error",
-                description:
-                  error instanceof Error && error.message
-                    ? error.message
-                    : "Failed to delete node. Please try again.",
-                variant: "destructive",
-              });
-            } finally {
-              setIsSubmitting(false);
-            }
-          }}
-        >
-          Ya, Hapus
-        </Button>
-      ),
-    });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/nodes/${nodeToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal menghapus node.");
+      }
+
+      toast({
+        title: "Berhasil",
+        description: `Perintah penghapusan untuk node ${nodeToDelete.name} berhasil dikirim.`,
+      });
+
+      await fetchNodes(); // Refresh data
+    } catch (error) {
+      if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+      setIsDeleteModalOpen(false); // Tutup dialog setelah selesai
+      setNodeToDelete(null); // Bersihkan state
+    }
   };
 
   return (
@@ -379,8 +372,8 @@ export default function NodesClientPage({
                               node.status === NodeStatus.ONLINE
                                 ? "default"
                                 : node.status === NodeStatus.OFFLINE
-                                ? "destructive"
-                                : "secondary"
+                                  ? "destructive"
+                                  : "secondary"
                             }
                           >
                             {node.status}
@@ -391,13 +384,12 @@ export default function NodesClientPage({
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${
-                                    (node.cpuUsage || 0) > 80
+                                  className={`h-2 rounded-full ${(node.cpuUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.cpuUsage || 0) > 60
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
                                   style={{ width: `${node.cpuUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -414,13 +406,12 @@ export default function NodesClientPage({
                             <div className="flex items-center space-x-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${
-                                    (node.ramUsage || 0) > 80
+                                  className={`h-2 rounded-full ${(node.ramUsage || 0) > 80
                                       ? "bg-red-500"
                                       : (node.ramUsage || 0) > 60
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
                                   style={{ width: `${node.ramUsage || 0}%` }}
                                 ></div>
                               </div>
@@ -479,9 +470,8 @@ export default function NodesClientPage({
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => handleDeleteNode(node.id)}
+                                onClick={() => handleDeleteClick(node)} // Panggil fungsi untuk membuka dialog
                                 disabled={isSubmitting}
-                                type="button"
                               >
                                 <Trash2 className="h-4 w-4" />
                                 <span className="ml-1">Hapus</span>
@@ -596,6 +586,36 @@ export default function NodesClientPage({
       </Dialog>
 
       <Toaster />
+      {/* Letakkan ini di bagian bawah return() dari komponen halaman Anda */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Penghapusan</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus node{" "}
+              <span className="font-bold">{nodeToDelete?.name}</span>? Tindakan ini
+              akan mengirim perintah ke agen untuk menghapus dirinya sendiri dan tidak
+              dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Ya, Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
