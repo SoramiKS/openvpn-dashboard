@@ -195,7 +195,7 @@ Setelah bikin akun admin, sistem siap dipakai.
 ## 🔗 Agent
 
 Dashboard butuh **OpenVPN Agent** di tiap server.  
-👉 [Repo Agent OpenVPN](https://github.com/link-to-your-agent-repo) *(ganti link sesuai repo agen)*
+👉 [Repo Agent OpenVPN](https://github.com/SoramiKS/ovpn-agent-bash)
 
 ---
 
