@@ -140,8 +140,7 @@ RECAPTCHA_SECRET_KEY="your-recaptcha-secret-key"
 
 ### 4️⃣ Migrasi & Build
 ```bash
-sudo npx prisma generate
-sudo npx prisma migrate deploy
+sudo npx prisma migrate dev
 sudo npm run build
 ```
 
