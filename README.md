@@ -130,8 +130,10 @@ sudo nano .env
 Isi sesuai:
 ```env
 DATABASE_URL="postgresql://ovpn:YourStrongPassword@localhost:5432/vpndashboard?schema=public"
+AGENT_API_KEY="ganti-dengan-kunci-rahasia-yang-kuat"
 NEXTAUTH_SECRET="your-super-strong-random-nextauth-secret"
 NEXTAUTH_URL="https://yourdomain.com"
+
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY="your-recaptcha-site-key"
 RECAPTCHA_SECRET_KEY="your-recaptcha-secret-key"
 ```
