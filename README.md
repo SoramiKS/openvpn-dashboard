@@ -90,6 +90,18 @@ graph TD
 - PostgreSQL
 - Nginx
 
+# 🚀 Setup
+
+Install semua dependency sekali jalan:
+
+```bash
+# Tambah Node.js 18 repo
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+
+# Install semua dependency
+sudo apt update && sudo apt install -y git curl nodejs postgresql postgresql-contrib nginx
+```
+
 ### 1️⃣ Clone Repo & Install
 ```bash
 cd /var/www
