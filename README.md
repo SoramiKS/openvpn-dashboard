@@ -100,6 +100,7 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 
 # Install semua dependency
 sudo apt update && sudo apt install -y git curl nodejs postgresql postgresql-contrib nginx
+```
 
 ### 1️⃣ Clone Repo & Install
 ```bash
