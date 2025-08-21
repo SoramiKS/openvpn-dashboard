@@ -140,6 +140,9 @@ RECAPTCHA_SECRET_KEY="your-recaptcha-secret-key"
 
 ### 4️⃣ Migrasi & Build
 ```bash
+sudo nano /etc/nginx/sites-available/ovpn
+```
+```bash
 sudo npx prisma migrate dev
 sudo npm run build
 ```
