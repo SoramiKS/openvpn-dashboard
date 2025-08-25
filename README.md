@@ -6,174 +6,138 @@
 ![Postgres](https://img.shields.io/badge/PostgreSQL-DB-316192?logo=postgresql)
 ![Tailwind](https://img.shields.io/badge/TailwindCSS-CSS-38b2ac?logo=tailwindcss)
 
-Dashboard web modern untuk memusatkan, memonitor, dan mengelola beberapa server OpenVPN dengan mudah dari satu titik kontrol.
+A modern web-based dashboard to centralize, monitor, and manage multiple OpenVPN servers seamlessly from one control panel.
 
-<img width="1859" height="1017" alt="Screenshot 2025-08-25 152926" src="https://github.com/user-attachments/assets/cc106ff6-872a-4491-b86d-7a75c35cb919" />
-
----
-
-## 🎯 Tentang Proyek
-
-Mengelola banyak server OpenVPN secara manual lewat CLI itu ribet + makan waktu.  
-Proyek ini hadir buat nyelametin waktu admin dengan **UI modern, intuitif, dan aman**, biar semua server, user VPN, sampai log koneksi bisa diatur dari satu dashboard.
+![Dashboard Screenshot](https://github.com/user-attachments/assets/cc106ff6-872a-4491-b86d-7a75c35cb919)
 
 ---
 
-## ✨ Fitur Utama
+## 🎯 About the Project
 
-### 🔧 Manajemen Node
-- CRUD node server OpenVPN.
-- Monitoring real-time (status, CPU, RAM).
-- ID unik untuk sinkronisasi agen.
-
-### 👤 Manajemen Pengguna & RBAC
-- Role **Admin** & **User**.
-- Admin bisa kelola semua: node, profil VPN, user dashboard.
-- User cuma bisa unduh profil VPN yang ditugasin.
-
-### 🔑 Manajemen Profil VPN
-- Buat profil VPN & assign ke node.
-- Download `.ovpn` ready-to-use.
-- Revoke user kapan aja.
-- Search, filter, pagination.
-
-### 📜 Monitoring & Log
-- **Action logs** → semua aktivitas admin ke-track.
-- **User activity logs** → histori koneksi/diskoneksi.
-- Filter canggih (by node, action, tanggal).
-
-### 🔐 Keamanan
-- Setup admin pertama otomatis.
-- Login aman dengan bcrypt.
-- Google reCAPTCHA v2.
-- Middleware NextAuth buat proteksi route.
+Managing multiple OpenVPN servers manually through CLI is time-consuming and often inefficient.  
+This project aims to simplify the life of administrators by providing a modern, intuitive, and secure UI.  
+From user profiles to server monitoring, everything can now be managed from a single centralized dashboard.
 
 ---
 
-## 🏗️ Arsitektur
+## ✨ Key Features
 
-Aplikasi punya dua komponen:
+### 🔧 Node (Server) Management
+- Full CRUD operations for OpenVPN nodes.
+- Real-time monitoring of server status (Online/Offline, CPU, RAM usage).
+- Secure synchronization with unique tokens.
 
-1. **Dashboard (Next.js, proyek ini)** → UI buat admin/user.
-2. **Agent (Python, di tiap server)** → komunikasi ke dashboard, eksekusi perintah, laporin status.
+### 👤 User Management & RBAC
+- Role-based access: Admin vs. User.
+- Admins can manage nodes, VPN profiles, and dashboard users.
+- Users can only download their assigned VPN profiles.
+
+### 🔑 VPN Profile Management
+- Create and assign VPN profiles to specific nodes.
+- Download ready-to-use `.ovpn` files.
+- Revoke user access instantly.
+- Easy-to-use search, filter, and pagination.
+
+### 📜 Monitoring & Logs
+- **Action Logs:** Track all admin activities.
+- **User Logs:** Connection and disconnection history of VPN users.
+- Advanced filters (by node, action type, or date range).
+
+### 🔐 Security
+- Automatic initial admin setup on first installation.
+- Secure login with bcrypt password hashing.
+- Google reCAPTCHA v2 on the login page.
+- NextAuth middleware to protect routes and pages.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    A[Admin/User] -->|Akses Web| B(Dashboard - Next.js)
-    B <--> C{Database - PostgreSQL}
-    B --> D[Action Log]
-    E[Agent - Python di Server VPN] -->|Sync & Report| B
-    E <--> F(Server OpenVPN)
+    A[Admin/User] -->|Access via Browser| B(Dashboard - Next.js)
+    B <--> C[(PostgreSQL Database)]
+    B --> D[Action Logs]
+    E[Agent - Python on VPN Server] -->|Sync & Reports| B
+    E <--> F(OpenVPN Server)
 ```
+
+- **Dashboard:** Built with Next.js, React, TypeScript, Tailwind, shadcn/ui.  
+- **Agent:** Lightweight FastAPI service on each OpenVPN server.  
+- **Database:** PostgreSQL managed with Prisma ORM.  
 
 ---
 
 ## 🚀 Tech Stack
 
-| Kategori        | Teknologi |
-|-----------------|-----------|
-| Framework       | Next.js (App Router), React |
-| Bahasa          | TypeScript |
-| Styling         | Tailwind CSS, shadcn/ui |
-| Database        | PostgreSQL |
-| ORM             | Prisma |
-| Otentikasi      | NextAuth.js |
-| Deployment      | PM2, Nginx, Certbot |
+- **Framework:** Next.js (App Router), React  
+- **Language:** TypeScript  
+- **Styling:** Tailwind CSS, shadcn/ui  
+- **Database:** PostgreSQL  
+- **ORM:** Prisma  
+- **Authentication:** NextAuth.js  
+- **Agent:** Python + FastAPI  
+- **Deployment:** PM2, Nginx, Certbot  
 
 ---
 
-## ⚙️ Instalasi & Deployment
+## ⚙️ Installation Guide
 
-> Panduan ini untuk server **Debian/Ubuntu**.
+### 1. Dashboard Setup (Web Server)
 
-### Prasyarat
-- `git`, `curl`
-- Node.js >= 18
-- PostgreSQL
-- Nginx
+**Requirements:** Debian/Ubuntu server with Node.js v18+, PostgreSQL, Git, Nginx.  
 
-# 🚀 Setup
-
-Install semua dependency sekali jalan:
-
+1. Install dependencies  
 ```bash
-# Tambah Node.js 18 repo
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-
-# Install semua dependency
 sudo apt update && sudo apt install -y git curl nodejs postgresql postgresql-contrib nginx
 ```
 
-### 1️⃣ Clone Repo & Install
+2. Clone repository & install dependencies  
 ```bash
 cd /var/www
-sudo git clone https://github.com/SoramiKS/openvpn-dashboard.git ovpn
-cd ovpn
-sudo npm install
+sudo git clone <REPOSITORY_URL> dashboard
+cd dashboard
+sudo pnpm install
 ```
 
-### 2️⃣ Setup Database
-```bash
-sudo -u postgres psql
-```
+3. Setup PostgreSQL database  
 ```sql
 CREATE DATABASE vpndashboard;
-CREATE USER ovpn WITH ENCRYPTED PASSWORD 'YourStrongPassword';
+CREATE USER ovpn WITH ENCRYPTED PASSWORD 'StrongPasswordHere';
 GRANT ALL PRIVILEGES ON DATABASE vpndashboard TO ovpn;
 \q
 ```
 
-### 3️⃣ Konfigurasi `.env`
+4. Configure `.env`  
 ```bash
-sudo cp .env.example .env
-sudo nano .env
+DATABASE_URL="postgresql://ovpn:StrongPasswordHere@localhost:5432/vpndashboard"
+NEXTAUTH_SECRET="YourRandomSecureSecret"
+NEXTAUTH_URL="https://dashboard.yourdomain.com"
+NEXT_PUBLIC_DASHBOARD_URL="https://dashboard.yourdomain.com"
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY="YourRecaptchaSiteKey"
+RECAPTCHA_SECRET_KEY="YourRecaptchaSecretKey"
 ```
 
-Isi sesuai:
-```env
-DATABASE_URL="postgresql://ovpn:YourStrongPassword@localhost:5432/vpndashboard"
-AGENT_API_KEY="ganti-dengan-kunci-rahasia-yang-kuat"
-NEXTAUTH_SECRET="your-super-strong-random-nextauth-secret"
-NEXTAUTH_URL="https://yourdomain.com"
-
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY="your-recaptcha-site-key"
-RECAPTCHA_SECRET_KEY="your-recaptcha-secret-key"
+5. Run migration & build project  
+```bash
+sudo pnpm prisma migrate dev
+sudo pnpm build
 ```
 
-### 4️⃣ Migrasi & Build
+6. Run with PM2  
 ```bash
-sudo nano /etc/nginx/sites-available/ovpn
-```
-```bash
-sudo npx prisma migrate dev
-sudo npm run build
-```
-
----
-
-## 🏃 Jalankan Aplikasi
-
-### Development
-```bash
-npm run dev
-```
-→ Akses di `http://localhost:3000`
-
-### Production (Recommended)
-
-**a. PM2**
-```bash
-sudo npm install -g pm2
-pm2 start npm --name "ovpn-dashboard" -- start
+sudo pnpm install -g pm2
+pm2 start pnpm --name "ovpn-dashboard" -- start
 pm2 startup
 pm2 save
 ```
 
-**b. Nginx**
+7. Configure Nginx reverse proxy  
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com;
+    server_name dashboard.yourdomain.com;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -188,39 +152,57 @@ server {
 }
 ```
 
-Aktifkan config:
+Enable & reload Nginx:  
 ```bash
-sudo ln -s /etc/nginx/sites-available/ovpn-dashboard /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/dashboard /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-**c. SSL dengan Certbot**
+8. Secure with SSL (optional but recommended)  
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d yourdomain.com
+sudo certbot --nginx -d dashboard.yourdomain.com
 ```
 
----
-
-## 🚀 Setup Awal
-
-Akses `https://yourdomain.com` → bakal muncul **Setup Admin Pertama**.  
-Setelah bikin akun admin, sistem siap dipakai.
+9. First-time setup: Open the dashboard in your browser and create the first admin account.
 
 ---
 
-## 🔗 Agent
+### 2. Agent Setup (on OpenVPN Server)
 
-Dashboard butuh **OpenVPN Agent** di tiap server.  
-👉 [Repo Agent OpenVPN](https://github.com/SoramiKS/ovpn-agent-bash)
+1. Copy deployment script to `/root`:  
+```bash
+chmod +x /root/deploymentovpn-refined.sh
+```
+
+2. Run the script and enter API Key + Server ID provided by dashboard.  
+```bash
+sudo /root/deploymentovpn-refined.sh
+```
+
+3. Configure firewall:  
+```bash
+sudo ufw allow from <DASHBOARD_IP> to any port 8080 proto tcp
+sudo ufw allow from <DASHBOARD_IP> to any port 161 proto udp
+```
+
+Repeat on each OpenVPN server you want to add.
 
 ---
 
-## 📜 Lisensi
-MIT License.
+## 🔗 Related Repositories
+
+- [OpenVPN Agent Repository](#)
+
+---
+
+## 📜 License
+
+Licensed under MIT License.
 
 ---
 
 ## ✍️ Author
-**SoramiKS**
+
+**SoramiKS**  
