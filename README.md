@@ -8,6 +8,8 @@
 
 Dashboard web modern untuk memusatkan, memonitor, dan mengelola beberapa server OpenVPN dengan mudah dari satu titik kontrol.
 
+<img width="1859" height="1017" alt="Screenshot 2025-08-25 152926" src="https://github.com/user-attachments/assets/cc106ff6-872a-4491-b86d-7a75c35cb919" />
+
 ---
 
 ## 🎯 Tentang Proyek
