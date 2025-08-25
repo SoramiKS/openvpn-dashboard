@@ -1,33 +1,48 @@
-// app/api/nodes/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { NodeStatus } from "@prisma/client";
 import { randomBytes } from 'crypto';
-import { Prisma } from "@prisma/client"; // Import Prisma for error types
+import { Prisma } from "@prisma/client";
+import { subMinutes } from "date-fns";
 
-// Definisikan ambang batas waktu untuk menganggap node offline (misal: 5 menit)
-const OFFLINE_THRESHOLD_MS = 20 * 1000; // 5 menit dalam milidetik
+const OFFLINE_THRESHOLD_MS = 30 * 1000; // Consider offline if no report > 30 seconds
+const DELETION_CLEANUP_MINUTES = 1; // Permanently delete after 1 minute
 
-
-// --- GET Request (Fetch all Nodes with Stale check) ---
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
-      return NextResponse.json({ message: 'Akses ditolak' }, { status: 401 });
+      return NextResponse.json({ message: 'Access denied' }, { status: 401 });
     }
 
-    const nodes = await prisma.node.findMany({
+    // 1. Run cleanup for nodes that are being deleted
+    const deletionThreshold = subMinutes(new Date(), DELETION_CLEANUP_MINUTES);
+    await prisma.node.deleteMany({
+        where: {
+            status: NodeStatus.DELETING,
+            deletionStartedAt: {
+                lt: deletionThreshold // Older than the threshold
+            }
+        }
+    });
+
+    // 2. Fetch list of "active" nodes (not being deleted)
+    const activeNodes = await prisma.node.findMany({
+      where: {
+        status: {
+          not: NodeStatus.DELETING
+        }
+      },
       orderBy: { name: 'asc' },
     });
 
     const now = new Date();
     const staleNodeIds: string[] = [];
 
-    // 1. Deteksi semua node yang seharusnya OFFLINE
-    nodes.forEach(node => {
+    // 3. Detect nodes that should be OFFLINE from the active list
+    activeNodes.forEach(node => {
       if (node.status === NodeStatus.ONLINE && node.lastSeen) {
         const timeSinceLastSeen = now.getTime() - node.lastSeen.getTime();
         if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS) {
@@ -36,69 +51,53 @@ export async function GET() {
       }
     });
 
-    // 2. Jika ada node yang offline, perbarui statusnya di database
+    // 4. If there are offline nodes, update their status in the database
     if (staleNodeIds.length > 0) {
       await prisma.node.updateMany({
-        where: {
-          id: {
-            in: staleNodeIds,
-          },
-        },
-        data: {
-          status: NodeStatus.OFFLINE,
-        },
+        where: { id: { in: staleNodeIds } },
+        data: { status: NodeStatus.OFFLINE },
       });
     }
 
-    // 3. Ambil kembali data yang sudah diperbarui untuk ditampilkan
+    // 5. Fetch final cleaned and updated data to return
     const finalNodes = await prisma.node.findMany({
+        where: {
+            status: {
+                not: NodeStatus.DELETING
+            }
+        },
         orderBy: { name: 'asc' },
     });
 
     return NextResponse.json(finalNodes, { status: 200 });
   } catch (error: unknown) {
     console.error('Error fetching nodes:', error);
-    return NextResponse.json({ message: 'Terjadi kesalahan internal pada server' }, { status: 500 });
+    return NextResponse.json({ message: 'Internal server error occurred' }, { status: 500 });
   }
 }
 
-// --- POST Request (Create a new Node) ---
-interface CreateNodeRequestBody {
-  name: string;
-  ip: string;
-  location?: string;
-  snmpCommunity?: string; // Optional, default to 'public' if not provided
-}
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ message: 'Unauthorized: Not logged in.' }, { status: 401 });
+    if (!session || !session.user || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: 'Access denied' }, { status: 403 });
     }
 
-    const { name, ip, location, snmpCommunity }: CreateNodeRequestBody = await req.json();
+    const { name, ip, location, snmpCommunity }: { name: string; ip: string; location?: string; snmpCommunity?: string; } = await req.json();
 
     if (!name || !ip) {
       return NextResponse.json({ message: 'Node name and IP are required.' }, { status: 400 });
     }
 
-    // Periksa apakah node dengan nama atau IP yang sama sudah ada
     const existingNode = await prisma.node.findFirst({
-      where: {
-        OR: [
-          { name: name },
-          { ip: ip },
-        ],
-      },
+      where: { OR: [{ name: name }, { ip: ip }] },
     });
 
     if (existingNode) {
-      return NextResponse.json({ message: 'A node with that name or IP already exists.' }, { status: 409 });
+      return NextResponse.json({ message: 'A node with this name or IP already exists.' }, { status: 409 });
     }
 
-    // Buat token unik untuk agen
     const token = randomBytes(32).toString('hex');
 
     const newNode = await prisma.node.create({
@@ -107,33 +106,22 @@ export async function POST(req: NextRequest) {
         ip: ip,
         location: location,
         token: token,
-        status: NodeStatus.UNKNOWN, // Status awal adalah UNKNOWN sampai agen melaporkan
+        status: NodeStatus.UNKNOWN,
         lastSeen: new Date(),
         cpuUsage: 0,
         ramUsage: 0,
         serviceStatus: 'UNKNOWN',
-        snmpCommunity: snmpCommunity || 'public', // Default ke 'public' jika kosong
+        snmpCommunity: snmpCommunity || 'public',
       },
     });
 
     return NextResponse.json({ message: 'Node created successfully.', node: newNode }, { status: 201 });
 
-  } catch (error: unknown) { // Use 'unknown' for better type safety
+  } catch (error: unknown) {
     console.error('Error creating node:', error);
-
-    // Check for specific Prisma errors
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return NextResponse.json({ message: 'A node with this name or IP already exists.' }, { status: 409 });
-      }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ message: 'A node with this name or IP already exists.' }, { status: 409 });
     }
-
-    // Check for generic Error
-    if (error instanceof Error) {
-      return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
-    }
-
-    // Fallback for non-Error types
-    return NextResponse.json({ message: 'An unknown internal server error occurred' }, { status: 500 });
+    return NextResponse.json({ message: 'Internal server error occurred.' }, { status: 500 });
   }
 }

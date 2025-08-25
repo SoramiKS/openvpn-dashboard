@@ -4,13 +4,10 @@ import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { ActionType, ActionStatus } from "@prisma/client";
 
-// 💡 Fixed handler signature for Next.js 15
-export async function POST(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  // Await the params in Next.js 15
-  const { id } = await context.params;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function POST(req: NextRequest, context: any) {
+  const { id } = context.params;
 
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -20,7 +17,7 @@ export async function POST(
     );
   }
 
-  if (!id || typeof id !== "string") {
+  if (!id) {
     return NextResponse.json(
       { message: "VpnUser ID is required." },
       { status: 400 }
@@ -63,11 +60,9 @@ export async function POST(
     );
   } catch (error: unknown) {
     console.error("Error revoking VPN user:", error);
-    if (error instanceof Error) {
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: "Internal server error", error: (error as Error).message },
       { status: 500 }
     );
-  }
   }
 }

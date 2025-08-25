@@ -73,6 +73,7 @@ model Node {
   serviceStatus String    @default("UNKNOWN") // Tambahkan untuk status layanan OpenVPN (running/stopped)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  deletionStartedAt DateTime?  
 
   snmpCommunity String?
   vpnUsers     VpnUser[]     // Node has many VpnUsers

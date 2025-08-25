@@ -5,7 +5,6 @@ import { NodeStatus, Prisma } from "@prisma/client";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // PERBAIKAN: Ambil 'activeUsers' dari body, default ke array kosong
     const { serverId, serviceStatus, activeUsers = [] } = body;
 
     if (!serverId) {
@@ -14,9 +13,8 @@ export async function POST(request: NextRequest) {
 
     const nodeStatus = serviceStatus === 'running' ? NodeStatus.ONLINE : NodeStatus.OFFLINE;
 
-    // Gunakan transaksi database untuk memastikan semua operasi berhasil atau gagal bersamaan
+    // Langsung update, tanpa memeriksa status sebelumnya
     await prisma.$transaction(async (tx) => {
-        // 1. Perbarui status Node (seperti sebelumnya)
         await tx.node.update({
             where: { id: serverId },
             data: {
@@ -25,24 +23,20 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // 2. Reset status semua pengguna di node ini menjadi 'inactive'
         await tx.vpnUser.updateMany({
             where: { nodeId: serverId },
             data: { isActive: false },
         });
 
-        // 3. Jika ada pengguna yang aktif, perbarui status mereka menjadi 'active'
         if (activeUsers.length > 0) {
             await tx.vpnUser.updateMany({
                 where: {
                     nodeId: serverId,
-                    username: {
-                        in: activeUsers, // Cari semua username yang ada di dalam daftar
-                    },
+                    username: { in: activeUsers },
                 },
                 data: {
                     isActive: true,
-                    lastConnected: new Date(), // Perbarui waktu koneksi terakhir
+                    lastConnected: new Date(),
                 },
             });
         }
