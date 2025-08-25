@@ -1,276 +1,188 @@
-// app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Server, Users, Activity, Shield, Loader2 } from "lucide-react";
+import { Server, Users, Activity, Shield, Loader2, Cpu, MemoryStick, ArrowDown, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Node, VpnUser, VpnCertificateStatus, NodeStatus, ActionLog, VpnActivityLog } from "@prisma/client";
 
-// Import tipe langsung dari Prisma Client yang digenerate
-import {
-  Node,
-  VpnUser,
-  VpnCertificateStatus,
-  NodeStatus,
-} from "@prisma/client"; // Import NodeStatus enum
+// Tipe data yang diperluas
+interface NodeWithMetrics extends Node { cpuUsage: number; ramUsage: number; }
+// PERBAIKAN: Tipe spesifik untuk log gabungan
+type RecentLog = (ActionLog & { node: { name: string } }) | (VpnActivityLog & { node: { name: string } });
+
+// Fungsi format byte
+const formatBytes = (bytes: number | string | bigint | null | undefined, decimals = 2) => {
+    if (bytes === null || bytes === undefined || Number(bytes) === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
+    return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 export default function DashboardPage() {
-  const [nodesData, setNodesData] = useState<Node[]>([]);
+  const [nodesData, setNodesData] = useState<NodeWithMetrics[]>([]);
   const [vpnUsersData, setVpnUsersData] = useState<VpnUser[]>([]);
+  const [recentLogs, setRecentLogs] = useState<RecentLog[]>([]);
+  const [trafficStats, setTrafficStats] = useState({ totalSent: '0', totalReceived: '0' });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fungsi untuk mengambil semua data yang dibutuhkan untuk dashboard
   const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
+    if (nodesData.length === 0) setIsLoading(true);
     try {
-      // Fetch Nodes data
-      const nodesResponse = await fetch("/api/nodes");
-      if (!nodesResponse.ok) {
-        const errorData = await nodesResponse.json();
-        throw new Error(
-          errorData.message ||
-            `HTTP error! status: ${nodesResponse.status} saat mengambil data node`
-        );
-      }
-      const nodes: Node[] = await nodesResponse.json();
-      setNodesData(nodes);
+      const [nodesRes, usersRes, recentLogsRes, trafficRes] = await Promise.all([
+        fetch("/api/nodes"),
+        fetch("/api/profiles"),
+        fetch("/api/logs/recent"),
+        fetch("/api/stats/traffic"),
+      ]);
 
-      // Fetch VPN Users data
-      const usersResponse = await fetch("/api/profiles");
-      if (!usersResponse.ok) {
-        const errorData = await usersResponse.json();
-        throw new Error(
-          errorData.message ||
-            `HTTP error! status: ${usersResponse.status} saat mengambil data profil VPN`
-        );
+      if (!nodesRes.ok || !usersRes.ok || !recentLogsRes.ok || !trafficRes.ok) {
+        throw new Error("Gagal mengambil sebagian data dashboard.");
       }
-      const users: VpnUser[] = await usersResponse.json();
-      setVpnUsersData(users);
+
+      setNodesData(await nodesRes.json());
+      setVpnUsersData(await usersRes.json());
+      setRecentLogs(await recentLogsRes.json());
+      setTrafficStats(await trafficRes.json());
+
     } catch (error: unknown) {
-      console.error("Gagal memuat data dashboard:", error);
       if (error instanceof Error) {
-        // Tampilkan toast error jika terjadi kesalahan
-        toast({
-          title: "Error",
-          description:
-            error.message || "Gagal memuat data dashboard. Silakan coba lagi.",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message, variant: "destructive" });
       }
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, nodesData.length]);
 
-  // Efek samping untuk mengambil data saat komponen dimuat
   useEffect(() => {
     fetchDashboardData();
-    // Opsional: Auto-refresh data dashboard setiap X detik
-    const interval = setInterval(fetchDashboardData, 30000); // Refresh setiap 30 detik
+    const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
-  // Hitung statistik dari data yang diambil
-  const totalNodes = nodesData.length;
-  // Perbaiki perbandingan status di sini
-  const onlineNodes = nodesData.filter(
-    (node) => node.status === NodeStatus.ONLINE
-  ).length;
-  const totalUsers = vpnUsersData.length;
-  const validUsersCount = vpnUsersData.filter(
-    (user) => user.status === VpnCertificateStatus.VALID
-  ).length;
-  const activeSessions = vpnUsersData.filter((user) => user.isActive).length;
+  const stats = useMemo(() => {
+    const onlineNodes = nodesData.filter(n => n.status === NodeStatus.ONLINE);
+    const statusCounts = nodesData.reduce((acc, node) => { acc[node.status] = (acc[node.status] || 0) + 1; return acc; }, {} as Record<NodeStatus, number>);
+    const chartData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+    const avgCpu = onlineNodes.length > 0 ? onlineNodes.reduce((sum, node) => sum + node.cpuUsage, 0) / onlineNodes.length : 0;
+    const avgRam = onlineNodes.length > 0 ? onlineNodes.reduce((sum, node) => sum + node.ramUsage, 0) / onlineNodes.length : 0;
+    const topCpuNodes = [...onlineNodes].sort((a, b) => b.cpuUsage - a.cpuUsage).slice(0, 3);
+    const topRamNodes = [...onlineNodes].sort((a, b) => b.ramUsage - a.ramUsage).slice(0, 3);
 
-  // Tentukan status sistem secara keseluruhan
-  const systemStatus =
-    onlineNodes === totalNodes && totalNodes > 0 ? "Healthy" : "Degraded";
-  // Varian badge untuk status sistem (tidak perlu diubah, karena sudah string)
+    return { totalNodes: nodesData.length, onlineNodesCount: onlineNodes.length, totalUsers: vpnUsersData.length, validUsersCount: vpnUsersData.filter(u => u.status === VpnCertificateStatus.VALID).length, activeSessions: vpnUsersData.filter(u => u.isActive).length, statusChartData: chartData, avgCpu: parseFloat(avgCpu.toFixed(2)), avgRam: parseFloat(avgRam.toFixed(2)), topCpuNodes, topRamNodes };
+  }, [nodesData, vpnUsersData]);
+
+  const getSystemStatus = () => {
+    if (stats.totalNodes === 0) return { status: "No Nodes", description: "Add a node to begin monitoring.", color: "text-gray-600" };
+    const onlinePercentage = (stats.onlineNodesCount / stats.totalNodes) * 100;
+    const offlineCount = stats.totalNodes - stats.onlineNodesCount;
+    if (onlinePercentage === 100) return { status: "Healthy", description: "All systems are operating normally.", color: "text-green-600" };
+    if (onlinePercentage >= 90) return { status: "Warning", description: `${offlineCount} node(s) may be offline.`, color: "text-yellow-500" };
+    if (onlinePercentage >= 50) return { status: "Degraded", description: `Partial outage. ${offlineCount} node(s) are offline.`, color: "text-orange-600" };
+    return { status: "Critical", description: `Major outage. ${offlineCount} node(s) are offline.`, color: "text-red-600" };
+  };
+  const systemStatusInfo = getSystemStatus();
+  const COLORS: Record<string, string> = { ONLINE: '#22c55e', OFFLINE: '#ef4444', DELETING: '#f97316', UNKNOWN: '#64748b', ERROR: '#e11d48', PENDING: '#a1a1aa' };
+  const getProgressBarColor = (val: number) => { if (val > 80) return "bg-red-500"; if (val > 60) return "bg-yellow-500"; return "bg-blue-500"; };
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Ringkasan</h1>
-        <p className="text-gray-600">
-          Pantau infrastruktur OpenVPN Anda dengan cepat dan mudah
-        </p>
-      </div>
-
+      <div><h1 className="text-3xl font-bold">Overview</h1><p className="text-gray-600">Monitor your OpenVPN infrastructure at a glance.</p></div>
       {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-          <span className="ml-4 text-gray-500 text-lg">
-            Memuat data dashboard...
-          </span>
-        </div>
+        <div className="flex justify-center items-center h-60"><Loader2 className="h-10 w-10 animate-spin" /></div>
       ) : (
         <>
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Nodes
-                </CardTitle>
-                <Server className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalNodes}</div>
-                <div className="flex items-center mt-2">
-                  {/* Perbaiki perbandingan status di sini */}
-                  <Badge variant={onlineNodes > 0 ? "default" : "destructive"}>
-                    {onlineNodes} online
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Users
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalUsers}</div>
-                <div className="flex items-center mt-2">
-                  <Badge variant="default">{validUsersCount} valid</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Sesi Aktif
-                </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{activeSessions}</div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Jumlah pengguna yang sedang terhubung
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Status Sistem
-                </CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-2xl font-bold ${
-                    systemStatus === "Healthy"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {systemStatus}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {systemStatus === "Healthy"
-                    ? "Semua sistem beroperasi normal"
-                    : "Beberapa node mungkin offline atau bermasalah"}
-                </p>
-              </CardContent>
-            </Card>
+          {/* Kartu Statistik Atas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Nodes</CardTitle><Server className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalNodes}</div><p className="text-xs text-muted-foreground">{stats.onlineNodesCount} online</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Users</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalUsers}</div><p className="text-xs text-muted-foreground">{stats.validUsersCount} valid</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Sessions</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.activeSessions}</div><p className="text-xs text-muted-foreground">Currently connected</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Traffic (24h)</CardTitle><ArrowUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-lg font-bold flex items-center"><ArrowUp className="h-4 w-4 mr-2 text-gray-500"/>{formatBytes(trafficStats.totalSent)}</div><div className="text-lg font-bold flex items-center"><ArrowDown className="h-4 w-4 mr-2 text-gray-500"/>{formatBytes(trafficStats.totalReceived)}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">System Status</CardTitle><Shield className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className={`text-2xl font-bold ${systemStatusInfo.color}`}>{systemStatusInfo.status}</div><p className="text-xs text-muted-foreground mt-1">{systemStatusInfo.description}</p></CardContent></Card>
           </div>
 
-          {/* Node Status & Resource Usage */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Node Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {nodesData.length === 0 ? (
-                    <div className="text-center text-gray-500 py-4">
-                      Tidak ada node ditemukan.
-                    </div>
-                  ) : (
-                    nodesData.map((node) => (
-                      <div
-                        key={node.id}
-                        className="flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="font-medium">{node.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {node.location || "N/A"}
-                          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+                {/* Node Status dengan Donut Chart */}
+                <Card>
+                    <CardHeader><CardTitle>Node Status</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Pie data={stats.statusChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                                        {stats.statusChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#cccccc'} />))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
                         </div>
-                        {/* Perbaiki perbandingan status di sini */}
-                        <Badge
-                          variant={
-                            node.status === NodeStatus.ONLINE
-                              ? "default"
-                              : "destructive"
-                          }
-                        >
-                          {node.status}{" "}
-                          {/* Menampilkan nilai enum sebagai string */}
-                        </Badge>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                        <div className="space-y-2">
+                            {stats.statusChartData.map((entry) => (
+                                <div key={entry.name} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center"><span className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: COLORS[entry.name] || '#cccccc' }}></span><span>{entry.name}</span></div>
+                                    <span className="font-medium">{entry.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+                {/* Resource Usage dengan Rata-rata & Top 3 */}
+                <Card>
+                    <CardHeader><CardTitle>Average Resource Usage (Online Nodes)</CardTitle></CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><Cpu className="h-4 w-4 mr-2" /> Average CPU</span><span>{stats.avgCpu}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgCpu)} h-2.5 rounded-full`} style={{ width: `${stats.avgCpu}%` }}></div></div></div>
+                            <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><MemoryStick className="h-4 w-4 mr-2" /> Average RAM</span><span>{stats.avgRam}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgRam)} h-2.5 rounded-full`} style={{ width: `${stats.avgRam}%` }}></div></div></div>
+                            <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (CPU)</h4>
+                                    <div className="space-y-2 text-xs text-muted-foreground">{stats.topCpuNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.cpuUsage}%</span></div>))}</div>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (RAM)</h4>
+                                    <div className="space-y-2 text-xs text-muted-foreground">{stats.topRamNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.ramUsage}%</span></div>))}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Penggunaan Sumber Daya (Node Online)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {nodesData.filter((node) => node.status === NodeStatus.ONLINE)
-                    .length === 0 ? ( // Filter juga diperbaiki
-                    <div className="text-center text-gray-500 py-4">
-                      Tidak ada node online untuk menampilkan penggunaan sumber
-                      daya.
+            {/* Aktivitas Terbaru */}
+            <Card className="lg:col-span-1">
+                <CardHeader><CardTitle>Recent Activities</CardTitle></CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {recentLogs.length === 0 ? <p className="text-sm text-muted-foreground">No recent activities.</p> : 
+                        recentLogs.map(log => {
+                            // --- PERBAIKAN: Gunakan type guard untuk membedakan log ---
+                            const isActionLog = 'details' in log;
+                            const logDate = isActionLog ? log.createdAt : log.timestamp;
+                            const logAction = log.action;
+                            
+                            return (
+                                <div key={log.id} className="flex items-start space-x-3">
+                                    <div className="flex-shrink-0">
+                                        <div className={`h-2 w-2 rounded-full mt-1.5 ${logAction === 'CONNECT' ? 'bg-green-500' : logAction === 'DISCONNECT' ? 'bg-gray-400' : 'bg-blue-500'}`}></div>
+                                    </div>
+                                    <div className="text-sm">
+                                        {isActionLog ? (
+                                            <p>User <span className="font-semibold">{log.details}</span> was {log.action === 'CREATE_USER' ? 'created' : 'revoked'} on <span className="font-semibold">{log.node.name}</span>.</p>
+                                        ) : (
+                                            <p>User <span className="font-semibold">{log.username}</span> {log.action.toLowerCase()} to <span className="font-semibold">{log.node.name}</span>.</p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">{new Date(logDate).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
-                  ) : (
-                    nodesData
-                      .filter((node) => node.status === NodeStatus.ONLINE)
-                      .map((node) => (
-                        <div key={node.id} className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>{node.name}</span>
-                            <span>
-                              CPU: {node.cpuUsage?.toFixed(1) || "N/A"}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: `${node.cpuUsage || 0}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span></span>
-                            <span>
-                              RAM: {node.ramUsage?.toFixed(1) || "N/A"}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: `${node.ramUsage || 0}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </CardContent>
+                </CardContent>
             </Card>
           </div>
         </>

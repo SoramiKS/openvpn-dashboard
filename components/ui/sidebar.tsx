@@ -3,77 +3,55 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton"; // BARU
+import { Skeleton } from "@/components/ui/skeleton"; // 1. Import Skeleton
 import {
   LayoutDashboard,
   Server,
   FileKey,
   ScrollText,
   Menu,
-  Users
+  Users,
+  Shield
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useSession } from "next-auth/react"; // BARU
-import Image from "next/image";
+import { useSession } from "next-auth/react"; // 2. Import useSession
+import Image from "next/image"; // 3. Import Image for logo
 
-type SidebarProps = React.HTMLAttributes<HTMLDivElement>;
+// Tipe props tidak berubah
+type SidebarProps = React.HTMLAttributes<HTMLDivElement> ;
 
-// --- MODIFIKASI: Tambahkan properti 'adminOnly' ---
 const navigation = [
-  {
-    name: "Overview",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    adminOnly: false, // Bisa dilihat semua peran
-  },
-  {
-    name: "Nodes",
-    href: "/dashboard/nodes",
-    icon: Server,
-    adminOnly: true, // Hanya untuk admin
-  },
-  {
-    name: "VPN Profiles",
-    href: "/dashboard/profiles",
-    icon: FileKey,
-    adminOnly: false, // Bisa dilihat semua peran
-  },
-  {
-    name: "Logs",
-    href: "/dashboard/logs",
-    icon: ScrollText,
-    adminOnly: false, // Bisa dilihat semua peran
-  },
-  {
-    name: "Users",
-    href: "/dashboard/users",
-    icon: Users, // Menggunakan ikon Users
-    adminOnly: true, // Hanya untuk admin
-  },
+  { name: "Overview", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
+  { name: "Nodes", href: "/dashboard/nodes", icon: Server, adminOnly: true },
+  { name: "VPN Profiles", href: "/dashboard/profiles", icon: FileKey, adminOnly: false },
+  { name: "Logs", href: "/dashboard/logs", icon: ScrollText, adminOnly: false },
+  { name: "Users", href: "/dashboard/users", icon: Users, adminOnly: true },
 ];
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
-  // --- BARU: Ambil data sesi dan status loading ---
+  // --- PERBAIKAN DI SINI ---
+  // 3. Ambil data sesi DAN status loading-nya
   const { data: session, status } = useSession();
   const userRole = session?.user?.role;
 
-  // Tampilkan loading skeleton saat sesi sedang diperiksa
+  // 4. Tampilkan placeholder loading jika sesi sedang diperiksa
   if (status === "loading") {
     return (
       <div className={cn("pb-12 space-y-4 py-4 px-3", className)}>
         <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
         </div>
       </div>
     );
   }
+  // --- AKHIR PERBAIKAN ---
 
   return (
     <div className={cn("pb-12", className)}>
@@ -83,23 +61,17 @@ export function Sidebar({ className }: SidebarProps) {
             <Image
               src="/logo.svg"
               alt="Logo"
-              width={80}
-              height={80}
-              className="h-8 w-8 mr-3 rounded-full text-primary"
-              unoptimized
-            />
+              width={32}
+              height={32}
+              className="mr-2"/>
             <div>
               <h1 className="text-xl font-bold">OpenVPN</h1>
               <p className="text-xs text-muted-foreground">Manager</p>
             </div>
           </div>
           <div className="space-y-1">
-            {/* --- MODIFIKASI: Filter menu sebelum di-render --- */}
             {navigation
-              .filter(item => {
-                // Tampilkan item jika tidak adminOnly ATAU jika adminOnly dan peran user adalah ADMIN
-                return !item.adminOnly || (item.adminOnly && userRole === 'ADMIN');
-              })
+              .filter(item => !item.adminOnly || (item.adminOnly && userRole === 'ADMIN'))
               .map((item) => (
                 <Link key={item.name} href={item.href}>
                   <Button

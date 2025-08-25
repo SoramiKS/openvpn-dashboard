@@ -39,7 +39,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"; // BARU
+} from "@/components/ui/pagination"; // NEW
 import {
   RefreshCw,
   Loader2,
@@ -55,7 +55,7 @@ import {
   ActionType,
 } from "@prisma/client";
 
-// Tipe yang diperluas
+// Extended types
 interface ExtendedActionLog extends ActionLog {
   node: { name: string };
   vpnUser: { username: string } | null;
@@ -68,7 +68,7 @@ interface NodeForSelect {
   name: string;
 }
 
-// Fungsi format byte
+// Byte formatting function
 const formatBytes = (
   bytes: number | string | bigint | null | undefined,
   decimals = 2
@@ -84,7 +84,7 @@ const formatBytes = (
   );
 };
 
-const LOGS_PER_PAGE = 20; // Atur jumlah log per halaman
+const LOGS_PER_PAGE = 20; // Set the number of logs per page
 
 export default function LogsPage() {
   const [actionLogs, setActionLogs] = useState<ExtendedActionLog[]>([]);
@@ -96,7 +96,7 @@ export default function LogsPage() {
   const [isVpnLogLoading, setIsVpnLogLoading] = useState(true);
   const { toast } = useToast();
 
-  // --- BARU: State untuk paginasi ---
+  // --- NEW: State for pagination ---
   const [totalActionLogs, setTotalActionLogs] = useState(0);
   const [actionLogPage, setActionLogPage] = useState(1);
   const [totalVpnActivityLogs, setTotalVpnActivityLogs] = useState(0);
@@ -113,7 +113,7 @@ export default function LogsPage() {
     endDate?: Date;
   }>({ nodeId: "all", action: "all" });
 
-  // --- MODIFIKASI: Fungsi fetch sekarang menerima parameter halaman ---
+  // --- MODIFICATION: Fetch function now accepts a page parameter ---
   const fetchActionLogs = useCallback(
     async (page = 1) => {
       setIsLoading(true);
@@ -121,14 +121,14 @@ export default function LogsPage() {
         const response = await fetch(
           `/api/logs?page=${page}&pageSize=${LOGS_PER_PAGE}`
         );
-        if (!response.ok) throw new Error("Gagal mengambil action logs");
+        if (!response.ok) throw new Error("Failed to fetch action logs");
         const { data, total } = await response.json();
         setActionLogs(data);
         setTotalActionLogs(total);
       } catch {
         toast({
           title: "Error",
-          description: "Gagal memuat action logs.",
+          description: "Failed to load action logs.",
           variant: "destructive",
         });
       } finally {
@@ -145,14 +145,14 @@ export default function LogsPage() {
         const response = await fetch(
           `/api/activity-logs?page=${page}&pageSize=${LOGS_PER_PAGE}`
         );
-        if (!response.ok) throw new Error("Gagal mengambil user activity logs");
+        if (!response.ok) throw new Error("Failed to fetch user activity logs");
         const { data, total } = await response.json();
         setVpnActivityLogs(data);
         setTotalVpnActivityLogs(total);
       } catch {
         toast({
           title: "Error",
-          description: "Gagal memuat user activity logs.",
+          description: "Failed to load user activity logs.",
           variant: "destructive",
         });
       } finally {
@@ -165,12 +165,12 @@ export default function LogsPage() {
   const fetchNodesForSelect = useCallback(async () => {
     try {
       const response = await fetch("/api/nodes");
-      if (!response.ok) throw new Error("Gagal mengambil node");
+      if (!response.ok) throw new Error("Failed to fetch nodes");
       setNodes(await response.json());
     } catch {
       toast({
         title: "Error",
-        description: "Gagal memuat node untuk filter.",
+        description: "Failed to load nodes for the filter.",
         variant: "destructive",
       });
     }
@@ -215,7 +215,7 @@ export default function LogsPage() {
     document.body.removeChild(link);
   };
 
-  // --- MODIFIKASI: useEffect memanggil fetch dengan halaman saat ini ---
+  // --- MODIFICATION: useEffect calls fetch with the current page ---
   useEffect(() => {
     fetchActionLogs(actionLogPage);
   }, [fetchActionLogs, actionLogPage]);
@@ -226,7 +226,7 @@ export default function LogsPage() {
     fetchNodesForSelect();
   }, [fetchNodesForSelect]);
 
-  // --- Logika filter tidak menampilkan data, hanya memfilter data yang sudah ada di halaman ---
+  // --- Filter logic only filters the data already on the page, it does not fetch new data ---
   const filteredActionLogs = useMemo(
     () =>
       actionLogs.filter(
@@ -281,8 +281,8 @@ export default function LogsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Logs Sistem</h1>
-          <p className="text-gray-600">Memantau event dan aktivitas sistem</p>
+          <h1 className="text-3xl font-bold">System Logs</h1>
+          <p className="text-gray-600">Monitor system events and activities</p>
         </div>
         <Button
           variant="outline"
@@ -312,10 +312,10 @@ export default function LogsPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Filter Node" />
+                <SelectValue placeholder="Filter by Node" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Node</SelectItem>
+                <SelectItem value="all">All Nodes</SelectItem>
                 {nodes.map((node) => (
                   <SelectItem key={node.id} value={node.id}>
                     {node.name}
@@ -330,10 +330,10 @@ export default function LogsPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Filter Aksi" />
+                <SelectValue placeholder="Filter by Action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Aksi</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 {Object.values(ActionType).map((action) => (
                   <SelectItem key={action} value={action}>
                     {action}
@@ -348,7 +348,7 @@ export default function LogsPage() {
               }
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Bersihkan
+              Clear
             </Button>
           </div>
         </CardHeader>
@@ -361,18 +361,18 @@ export default function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Node</TableHead>
-                  <TableHead>Aksi</TableHead>
+                  <TableHead>Action</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Pengguna/Rincian</TableHead>
+                  <TableHead>User/Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredActionLogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
-                      Tidak ada log yang cocok dengan filter.
+                      No logs match the filter.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -404,7 +404,7 @@ export default function LogsPage() {
             </Table>
           )}
         </CardContent>
-        {/* --- BARU: Kontrol Paginasi --- */}
+        {/* --- NEW: Pagination Controls --- */}
         <CardFooter>
           <Pagination>
             <PaginationContent>
@@ -457,10 +457,10 @@ export default function LogsPage() {
               }
             >
               <SelectTrigger className="lg:col-span-1">
-                <SelectValue placeholder="Filter Node" />
+                <SelectValue placeholder="Filter by Node" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Node</SelectItem>
+                <SelectItem value="all">All Nodes</SelectItem>
                 {nodes.map((node) => (
                   <SelectItem key={node.id} value={node.id}>
                     {node.name}
@@ -475,10 +475,10 @@ export default function LogsPage() {
               }
             >
               <SelectTrigger className="lg:col-span-1">
-                <SelectValue placeholder="Filter Aksi" />
+                <SelectValue placeholder="Filter by Action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Aksi</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="CONNECT">CONNECT</SelectItem>
                 <SelectItem value="DISCONNECT">DISCONNECT</SelectItem>
               </SelectContent>
@@ -493,7 +493,7 @@ export default function LogsPage() {
                   {vpnActivityLogFilter.startDate ? (
                     format(vpnActivityLogFilter.startDate, "PPP")
                   ) : (
-                    <span>Tanggal Mulai</span>
+                    <span>Start Date</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -521,7 +521,7 @@ export default function LogsPage() {
                   {vpnActivityLogFilter.endDate ? (
                     format(vpnActivityLogFilter.endDate, "PPP")
                   ) : (
-                    <span>Tanggal Akhir</span>
+                    <span>End Date</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -551,7 +551,7 @@ export default function LogsPage() {
                 })
               }
             >
-              <XCircle className="h-4 w-4 mr-2" /> Bersihkan
+              <XCircle className="h-4 w-4 mr-2" /> Clear
             </Button>
           </div>
         </CardHeader>
@@ -578,7 +578,7 @@ export default function LogsPage() {
                 {filteredVpnActivityLogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      Tidak ada aktivitas yang cocok dengan filter.
+                      No activity matches the filter.
                     </TableCell>
                   </TableRow>
                 ) : (

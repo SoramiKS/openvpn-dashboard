@@ -13,11 +13,11 @@ type ApiRouteHandler = (
 
 // PATCH (update user)
 export const PATCH: ApiRouteHandler = async (req, context) => {
-  const { id } = await context.params; // ⬅️ wajib pakai await
+  const { id } = await context.params; // ⬅️ must use await
   const session = await getServerSession(authOptions);
 
   if (session?.user?.role !== "ADMIN") {
-    return NextResponse.json({ message: "Akses Ditolak" }, { status: 403 });
+    return NextResponse.json({ message: "Access denied." }, { status: 403 });
   }
 
   try {
@@ -40,29 +40,29 @@ export const PATCH: ApiRouteHandler = async (req, context) => {
 
     return NextResponse.json(updatedUser, { status: 200 });
   } catch (error) {
-    console.error("Gagal update user:", error);
-    return NextResponse.json({ message: "Gagal update user." }, { status: 500 });
+    console.error("Failed to update user:", error);
+    return NextResponse.json({ message: "Failed to update user." }, { status: 500 });
   }
 };
 
-// DELETE (hapus user)
+// DELETE (remove user)
 export const DELETE: ApiRouteHandler = async (req, context) => {
-  const { id } = await context.params; // ⬅️ ini juga wajib await
+  const { id } = await context.params; // ⬅️ must use await
   const session = await getServerSession(authOptions);
 
   if (session?.user?.role !== "ADMIN") {
-    return NextResponse.json({ message: "Akses Ditolak" }, { status: 403 });
+    return NextResponse.json({ message: "Access denied." }, { status: 403 });
   }
 
   if (session.user.id === id) {
-    return NextResponse.json({ message: "Anda tidak bisa menghapus akun Anda sendiri." }, { status: 400 });
+    return NextResponse.json({ message: "You cannot delete your own account." }, { status: 400 });
   }
 
   try {
     await prisma.user.delete({ where: { id } });
-    return NextResponse.json({ message: "Pengguna berhasil dihapus." }, { status: 200 });
+    return NextResponse.json({ message: "User successfully deleted." }, { status: 200 });
   } catch (error) {
-    console.error("Gagal hapus user:", error);
-    return NextResponse.json({ message: "Gagal hapus user." }, { status: 500 });
+    console.error("Failed to delete user:", error);
+    return NextResponse.json({ message: "Failed to delete user." }, { status: 500 });
   }
 };

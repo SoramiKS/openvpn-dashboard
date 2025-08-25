@@ -18,7 +18,7 @@ export async function GET() {
         username: true,
         nodeId: true,
         node: { // Include node name for display purposes
-          select: { name: true }
+          select: { name: true, status: true }
         },
         status: true,
         expirationDate: true,
@@ -53,39 +53,39 @@ export async function POST(req: Request) {
     }
 
     // Reverted: Removed password verification logic
-    
+
     // Check if a VpnUser with this username already exists.
     const existingVpnUser = await prisma.vpnUser.findUnique({
-        where: { username: normalizedUsername },
+      where: { username: normalizedUsername },
     });
 
     if (existingVpnUser) {
-        return NextResponse.json({ message: `VPN profile for '${username}' already exists.` }, { status: 409 });
+      return NextResponse.json({ message: `VPN profile for '${username}' already exists.` }, { status: 409 });
     }
 
     // Check if there's an existing pending CREATE_USER action for this username
     const existingPendingAction = await prisma.actionLog.findFirst({
-        where: {
-            action: ActionType.CREATE_USER,
-            // Reverted: Searching for a direct string match in the details field
-            details: normalizedUsername,
-            status: ActionStatus.PENDING,
-        },
+      where: {
+        action: ActionType.CREATE_USER,
+        // Reverted: Searching for a direct string match in the details field
+        details: normalizedUsername,
+        status: ActionStatus.PENDING,
+      },
     });
 
     if (existingPendingAction) {
-        return NextResponse.json({ message: `Creation for '${username}' is already pending.` }, { status: 409 });
+      return NextResponse.json({ message: `Creation for '${username}' is already pending.` }, { status: 409 });
     }
-    
+
     // Reverted: No longer creating a JSON object for details
-    
+
     // Create an ActionLog entry with the username string directly in the details field
     const actionLog = await prisma.actionLog.create({
       data: {
         action: ActionType.CREATE_USER,
         nodeId: nodeId,
         // Reverted: Saving the normalized username directly
-        details: normalizedUsername, 
+        details: normalizedUsername,
         status: ActionStatus.PENDING,
       },
     });

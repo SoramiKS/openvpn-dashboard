@@ -2,11 +2,18 @@ import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
 import bcrypt from 'bcrypt';
+import { RateLimiterMemory } from 'rate-limiter-flexible';
+
+// Konfigurasi Rate Limiter: Maksimal 5 percobaan per menit dari satu IP
+const rateLimiter = new RateLimiterMemory({
+    points: 5,
+    duration: 60, // dalam detik
+});
 
 export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 hari
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
     CredentialsProvider({
@@ -16,9 +23,20 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
         recaptchaToken: { label: "reCAPTCHA Token", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) { 
         if (!credentials?.email || !credentials?.password || !credentials.recaptchaToken) {
           throw new Error("Email, password, dan token reCAPTCHA wajib diisi.");
+        }
+
+        // --- PERBAIKAN DI SINI ---
+        // Dapatkan IP dari header 'x-forwarded-for' yang diatur oleh Nginx
+        const ip = req.headers?.['x-forwarded-for'] || 'unknown';
+        // --- AKHIR PERBAIKAN ---
+
+        try {
+            await rateLimiter.consume(ip as string);
+        } catch {
+            throw new Error("Terlalu banyak percobaan login. Silakan coba lagi nanti.");
         }
 
         const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${credentials.recaptchaToken}`;
@@ -26,7 +44,6 @@ export const authOptions: AuthOptions = {
         const recaptchaData = await recaptchaResponse.json();
 
         if (!recaptchaData.success) {
-          console.warn("Verifikasi reCAPTCHA gagal:", recaptchaData['error-codes']);
           throw new Error("Verifikasi reCAPTCHA gagal. Anda mungkin bot.");
         }
 
@@ -34,14 +51,14 @@ export const authOptions: AuthOptions = {
           where: { email: credentials.email },
         });
 
-        if (!user) { throw new Error("Email tidak ditemukan."); }
+        if (!user) { throw new Error("Email atau password salah."); }
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
 
-        if (!isPasswordValid) { throw new Error("Password salah."); }
+        if (!isPasswordValid) { throw new Error("Email atau password salah."); }
 
         return {
           id: user.id,
@@ -53,8 +70,6 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Saat login pertama kali, objek 'user' akan tersedia
-      // Kita tambahkan properti dari user ke token
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -62,7 +77,6 @@ export const authOptions: AuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Setiap kali sesi diakses, kita tambahkan properti dari token ke sesi
       if (token && session.user) {
         session.user.id = token.id;
         session.user.role = token.role;

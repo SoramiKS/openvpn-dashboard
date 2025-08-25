@@ -10,74 +10,55 @@ import { Prisma } from "@prisma/client"; // Import Prisma for error types
 // Definisikan ambang batas waktu untuk menganggap node offline (misal: 5 menit)
 const OFFLINE_THRESHOLD_MS = 20 * 1000; // 5 menit dalam milidetik
 
-// Definisikan tipe yang sesuai dengan field yang dipilih dari Prisma
-type SelectedNodeFields = {
-  id: string;
-  name: string;
-  ip: string;
-  location: string | null;
-  cpuUsage: number;
-  ramUsage: number;
-  serviceStatus: string;
-  lastSeen: Date | null;
-  status: NodeStatus;
-  createdAt: Date;
-  updatedAt: Date;
-};
 
 // --- GET Request (Fetch all Nodes with Stale check) ---
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user) {
-      return NextResponse.json({ message: 'Unauthorized: Not logged in.' }, { status: 401 });
+      return NextResponse.json({ message: 'Akses ditolak' }, { status: 401 });
     }
 
     const nodes = await prisma.node.findMany({
-      select: {
-        id: true,
-        name: true,
-        ip: true,
-        location: true,
-        cpuUsage: true,
-        ramUsage: true,
-        serviceStatus: true,
-        lastSeen: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
       orderBy: { name: 'asc' },
     });
 
-    const processedNodes = nodes.map((node: SelectedNodeFields) => {
-      const now = new Date();
-      let actualStatus = node.status;
+    const now = new Date();
+    const staleNodeIds: string[] = [];
 
-      if (node.lastSeen) {
+    // 1. Deteksi semua node yang seharusnya OFFLINE
+    nodes.forEach(node => {
+      if (node.status === NodeStatus.ONLINE && node.lastSeen) {
         const timeSinceLastSeen = now.getTime() - node.lastSeen.getTime();
         if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS) {
-          actualStatus = NodeStatus.OFFLINE;
+          staleNodeIds.push(node.id);
         }
-      } else {
-        actualStatus = NodeStatus.UNKNOWN;
       }
-
-      return {
-        ...node,
-        status: actualStatus,
-      };
     });
 
-    return NextResponse.json(processedNodes, { status: 200 });
-  } catch (error: unknown) { // Use 'unknown' for better type safety
-    console.error('Error fetching nodes:', error);
-    if (error instanceof Error) {
-      return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
+    // 2. Jika ada node yang offline, perbarui statusnya di database
+    if (staleNodeIds.length > 0) {
+      await prisma.node.updateMany({
+        where: {
+          id: {
+            in: staleNodeIds,
+          },
+        },
+        data: {
+          status: NodeStatus.OFFLINE,
+        },
+      });
     }
-    // Fallback for non-Error types
-    return NextResponse.json({ message: 'An unknown internal server error occurred' }, { status: 500 });
+
+    // 3. Ambil kembali data yang sudah diperbarui untuk ditampilkan
+    const finalNodes = await prisma.node.findMany({
+        orderBy: { name: 'asc' },
+    });
+
+    return NextResponse.json(finalNodes, { status: 200 });
+  } catch (error: unknown) {
+    console.error('Error fetching nodes:', error);
+    return NextResponse.json({ message: 'Terjadi kesalahan internal pada server' }, { status: 500 });
   }
 }
 
@@ -86,6 +67,7 @@ interface CreateNodeRequestBody {
   name: string;
   ip: string;
   location?: string;
+  snmpCommunity?: string; // Optional, default to 'public' if not provided
 }
 
 export async function POST(req: NextRequest) {
@@ -96,7 +78,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized: Not logged in.' }, { status: 401 });
     }
 
-    const { name, ip, location }: CreateNodeRequestBody = await req.json();
+    const { name, ip, location, snmpCommunity }: CreateNodeRequestBody = await req.json();
 
     if (!name || !ip) {
       return NextResponse.json({ message: 'Node name and IP are required.' }, { status: 400 });
@@ -130,6 +112,7 @@ export async function POST(req: NextRequest) {
         cpuUsage: 0,
         ramUsage: 0,
         serviceStatus: 'UNKNOWN',
+        snmpCommunity: snmpCommunity || 'public', // Default ke 'public' jika kosong
       },
     });
 

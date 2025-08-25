@@ -1,4 +1,3 @@
-// app/nodes/client.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -34,15 +33,14 @@ interface NodeFormInput {
   name: string;
   ip: string;
   location: string;
+  snmpCommunity?: string;
 }
 
-// Props yang diterima dari Server Component
 interface NodesClientPageProps {
   apiKey: string;
   dashboardUrl: string;
 }
 
-// Nama komponen tetap sama, tidak masalah
 export default function NodesClientPage({
   apiKey,
   dashboardUrl,
@@ -58,6 +56,7 @@ export default function NodesClientPage({
     name: "",
     ip: "",
     location: "",
+    snmpCommunity: "public",
   });
   const [nodeForGuide, setNodeForGuide] = useState<Node | null>(null);
 
@@ -65,27 +64,23 @@ export default function NodesClientPage({
   const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(
     null
   );
-  // Di dalam komponen NodesPage Anda
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null); // Ganti 'Node' dengan tipe data node Anda
+  const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null);
 
   const fetchNodes = useCallback(async () => {
-    if (!nodes.length) {
-      setIsLoading(true);
-    }
+    if (nodes.length === 0) setIsLoading(true);
     try {
       const response = await fetch("/api/nodes");
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error("Failed to load node data.");
       const data: Node[] = await response.json();
       setNodes(data);
     } catch (error) {
-      console.error("Failed to fetch nodes:", error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data node. Silakan coba lagi.",
-        variant: "destructive",
-      });
+      if (error instanceof Error)
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
     } finally {
       setIsLoading(false);
     }
@@ -93,25 +88,42 @@ export default function NodesClientPage({
 
   useEffect(() => {
     fetchNodes();
+    const interval = setInterval(fetchNodes, 15000);
+    return () => clearInterval(interval);
   }, [fetchNodes]);
 
   useEffect(() => {
-    if (nodeForGuide) {
-      setIsGuideModalOpen(true);
-    }
+    const triggerMetricsUpdate = () => {
+      if (nodes.length === 0) return;
+      nodes.forEach((node) => {
+        if (node.status === NodeStatus.ONLINE) {
+          fetch(`/api/nodes/${node.id}/metrics`).catch((error) =>
+            console.error(
+              `Failed to trigger metrics update for ${node.name}:`,
+              error
+            )
+          );
+        }
+      });
+    };
+    const interval = setInterval(triggerMetricsUpdate, 10000);
+    return () => clearInterval(interval);
+  }, [nodes]);
+
+  useEffect(() => {
+    if (nodeForGuide) setIsGuideModalOpen(true);
   }, [nodeForGuide]);
 
   const handleProceedToGuide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNode.name.trim() || !newNode.ip.trim()) {
       toast({
-        title: "Input Tidak Lengkap",
-        description: "Nama dan IP Address wajib diisi.",
+        title: "Incomplete Input",
+        description: "Name and IP Address are required.",
         variant: "destructive",
       });
       return;
     }
-
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/nodes", {
@@ -119,35 +131,24 @@ export default function NodesClientPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNode),
       });
-
       const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Gagal menyimpan node baru.");
-      }
-
+      if (!response.ok)
+        throw new Error(responseData.message || "Failed to save new node.");
       const createdNode: Node = responseData.node;
-
-      if (!createdNode || !createdNode.id || !createdNode.name) {
-        console.error("Invalid API response:", createdNode);
-        throw new Error("Respons dari API tidak valid.");
-      }
-
+      if (!createdNode || !createdNode.id)
+        throw new Error("Invalid response from API.");
       toast({
-        title: "Berhasil",
-        description: "Node berhasil disimpan. Lanjutkan ke panduan instalasi.",
+        title: "Success",
+        description: "Node saved successfully. Continue to installation guide.",
       });
-
       setIsAddModalOpen(false);
       setNodeForGuide(createdNode);
-
       await fetchNodes();
     } catch (error) {
-      console.error("Error adding node:", error);
       toast({
         title: "Error",
         description:
-          error instanceof Error ? error.message : "Gagal menambahkan node.",
+          error instanceof Error ? error.message : "Failed to add node.",
         variant: "destructive",
       });
     } finally {
@@ -161,17 +162,18 @@ export default function NodesClientPage({
       name: node.name,
       ip: node.ip,
       location: node.location ?? "",
+      snmpCommunity: node.snmpCommunity ?? "",
     });
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditedNode((prev) => (prev ? { ...prev, [name]: value } : null));
+    setEditedNode((prev) =>
+      prev ? { ...prev, [e.target.name]: e.target.value } : null
+    );
   };
 
   const saveEditedNode = async () => {
     if (!editedNode || !editingNodeId) return;
-
     if (!editedNode.name?.trim() || !editedNode.ip?.trim()) {
       toast({
         title: "Input Error",
@@ -180,42 +182,26 @@ export default function NodesClientPage({
       });
       return;
     }
-
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/nodes/${editingNodeId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editedNode),
       });
-
-      if (!response.ok) {
-        let errorData = { message: "Failed to update node." };
-        try {
-          errorData = await response.json();
-        } catch (jsonError) {
-          console.error("Failed to parse JSON error:", jsonError);
-        }
-        throw new Error(errorData.message);
-      }
-
-      toast({
-        title: "Success",
-        description: "Node updated successfully!",
-      });
+      if (!response.ok)
+        throw new Error(
+          (await response.json()).message || "Failed to update node."
+        );
+      toast({ title: "Success", description: "Node updated successfully!" });
       setEditingNodeId(null);
       setEditedNode(null);
       await fetchNodes();
     } catch (error) {
-      console.error("Error saving node:", error);
       toast({
         title: "Error",
         description:
-          error instanceof Error && error.message
-            ? error.message
-            : "Failed to update node. Please try again.",
+          error instanceof Error ? error.message : "Failed to update node.",
         variant: "destructive",
       });
     } finally {
@@ -227,47 +213,35 @@ export default function NodesClientPage({
     setEditingNodeId(null);
     setEditedNode(null);
   };
-
-  // Fungsi untuk membuka dialog
   const handleDeleteClick = (node: Node) => {
-    // Ganti 'Node' dengan tipe data node Anda
     setNodeToDelete(node);
     setIsDeleteModalOpen(true);
   };
 
-  // Fungsi yang berisi logika fetch untuk menghapus node
   const handleConfirmDelete = async () => {
     if (!nodeToDelete) return;
-
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/nodes/${nodeToDelete.id}`, {
         method: "DELETE",
       });
+      const responseData = await response.json(); 
+      if (!response.ok)
+        throw new Error(responseData.message || "Failed to delete node.");
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus node.");
-      }
-
-      toast({
-        title: "Berhasil",
-        description: `Perintah penghapusan untuk node ${nodeToDelete.name} berhasil dikirim.`,
-      });
-
-      await fetchNodes(); // Refresh data
+      toast({ title: "Success", description: responseData.message });
+      await fetchNodes();
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof Error)
         toast({
           title: "Error",
           description: error.message,
           variant: "destructive",
         });
-      }
     } finally {
       setIsSubmitting(false);
-      setIsDeleteModalOpen(false); // Tutup dialog setelah selesai
-      setNodeToDelete(null); // Bersihkan state
+      setIsDeleteModalOpen(false);
+      setNodeToDelete(null);
     }
   };
 
@@ -275,17 +249,21 @@ export default function NodesClientPage({
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Nodes</h1>
-          <p className="text-gray-600">Kelola node server OpenVPN Anda</p>
+          <h1 className="text-3xl font-bold">Nodes</h1>
+          <p className="text-gray-600">Manage your OpenVPN server nodes</p>
         </div>
         <Button
           onClick={() => {
-            setNewNode({ name: "", ip: "", location: "" });
+            setNewNode({
+              name: "",
+              ip: "",
+              location: "",
+              snmpCommunity: "public",
+            });
             setIsAddModalOpen(true);
           }}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Node
+          <Plus className="h-4 w-4 mr-2" /> Add Node
         </Button>
       </div>
 
@@ -296,196 +274,185 @@ export default function NodesClientPage({
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">Loading nodes...</span>
+              <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <div className="relative w-full overflow-auto">
-              <Table>
-                <TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>IP Address</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>CPU</TableHead>
+                  <TableHead>RAM</TableHead>
+                  <TableHead>Last Seen</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {nodes.length === 0 ? (
                   <TableRow>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>IP Address</TableHead>
-                    <TableHead>Lokasi</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Pemakaian CPU</TableHead>
-                    <TableHead>Pemakaian RAM</TableHead>
-                    <TableHead>Terakhir di lihat</TableHead>
-                    <TableHead>Aksi</TableHead>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      No nodes found.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {nodes.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={8}
-                        className="text-center py-8 text-gray-500"
-                      >
-                        Tidak ditemukan node. Tambahkan node baru untuk memulai!
+                ) : (
+                  nodes.map((node) => (
+                    <TableRow key={node.id}>
+                      <TableCell className="font-medium">
+                        {editingNodeId === node.id ? (
+                          <Input
+                            name="name"
+                            value={editedNode?.name || ""}
+                            onChange={handleEditChange}
+                            disabled={isSubmitting}
+                          />
+                        ) : (
+                          <p>{node.name}</p>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingNodeId === node.id ? (
+                          <Input
+                            name="ip"
+                            value={editedNode?.ip || ""}
+                            onChange={handleEditChange}
+                            disabled={isSubmitting}
+                          />
+                        ) : (
+                          node.ip
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingNodeId === node.id ? (
+                          <Input
+                            name="location"
+                            value={editedNode?.location || ""}
+                            onChange={handleEditChange}
+                            disabled={isSubmitting}
+                          />
+                        ) : (
+                          node.location
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            node.status === NodeStatus.ONLINE
+                              ? "default"
+                              : node.status === NodeStatus.OFFLINE
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {node.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {node.status === NodeStatus.ONLINE ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  node.cpuUsage > 80
+                                    ? "bg-red-500"
+                                    : node.cpuUsage > 60
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                                style={{ width: `${node.cpuUsage}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm">{node.cpuUsage}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {node.status === NodeStatus.ONLINE ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  node.ramUsage > 80
+                                    ? "bg-red-500"
+                                    : node.ramUsage > 60
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                                style={{ width: `${node.ramUsage}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm">{node.ramUsage}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {node.lastSeen
+                          ? new Date(node.lastSeen).toLocaleString()
+                          : "Never"}
+                      </TableCell>
+                      <TableCell>
+                        {editingNodeId === node.id ? (
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={saveEditedNode}
+                              disabled={isSubmitting}
+                            >
+                              {isSubmitting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                              <span className="ml-1">Save</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={cancelEditing}
+                              disabled={isSubmitting}
+                              type="button"
+                            >
+                              <X className="h-4 w-4" />
+                              <span className="ml-1">Cancel</span>
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startEditing(node)}
+                              disabled={isSubmitting}
+                              type="button"
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="ml-1">Edit</span>
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteClick(node)}
+                              disabled={isSubmitting}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="ml-1">Delete</span>
+                            </Button>
+                            <NodeCopyButton nodeId={node.id} />
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    nodes.map((node) => (
-                      <TableRow key={node.id}>
-                        <TableCell className="font-medium">
-                          {editingNodeId === node.id ? (
-                            <Input
-                              name="name"
-                              value={editedNode?.name || ""}
-                              onChange={handleEditChange}
-                              className="w-full notranslate"
-                              disabled={isSubmitting}
-                            />
-                          ) : (
-                            <p className="notranslate">{node.name}</p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingNodeId === node.id ? (
-                            <Input
-                              name="ip"
-                              value={editedNode?.ip || ""}
-                              onChange={handleEditChange}
-                              className="w-full"
-                              disabled={isSubmitting}
-                            />
-                          ) : (
-                            node.ip
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingNodeId === node.id ? (
-                            <Input
-                              name="location"
-                              value={editedNode?.location || ""}
-                              onChange={handleEditChange}
-                              className="w-full"
-                              disabled={isSubmitting}
-                            />
-                          ) : (
-                            node.location
-                          )}
-                        </TableCell>
-                        <TableCell className="notranslate">
-                          <Badge
-                            variant={
-                              node.status === NodeStatus.ONLINE
-                                ? "default"
-                                : node.status === NodeStatus.OFFLINE
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {node.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {node.status === NodeStatus.ONLINE ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${(node.cpuUsage || 0) > 80
-                                      ? "bg-red-500"
-                                      : (node.cpuUsage || 0) > 60
-                                        ? "bg-yellow-500"
-                                        : "bg-green-500"
-                                    }`}
-                                  style={{ width: `${node.cpuUsage || 0}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm">
-                                {node.cpuUsage || 0}%
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {node.status === NodeStatus.ONLINE ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${(node.ramUsage || 0) > 80
-                                      ? "bg-red-500"
-                                      : (node.ramUsage || 0) > 60
-                                        ? "bg-yellow-500"
-                                        : "bg-green-500"
-                                    }`}
-                                  style={{ width: `${node.ramUsage || 0}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm">
-                                {node.ramUsage || 0}%
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {node.lastSeen
-                            ? new Date(node.lastSeen).toLocaleString()
-                            : "Never"}
-                        </TableCell>
-                        <TableCell>
-                          {editingNodeId === node.id ? (
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={saveEditedNode}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Save className="h-4 w-4" />
-                                )}
-                                <span className="ml-1 notranslate">Simpan</span>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={cancelEditing}
-                                disabled={isSubmitting}
-                                type="button"
-                              >
-                                <X className="h-4 w-4" />
-                                <span className="ml-1 notranslate">Batal</span>
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => startEditing(node)}
-                                disabled={isSubmitting}
-                                type="button"
-                              >
-                                <Edit className="h-4 w-4" />
-                                <span className="ml-1">Edit</span>
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteClick(node)} // Panggil fungsi untuk membuka dialog
-                                disabled={isSubmitting}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="ml-1">Hapus</span>
-                              </Button>
-                              <NodeCopyButton nodeId={node.id} />
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
@@ -493,17 +460,17 @@ export default function NodesClientPage({
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Tambah Node Baru</DialogTitle>
+            <DialogTitle>Add New Node</DialogTitle>
             <DialogDescription>
-              Masukkan detail untuk node server baru. Setelah disimpan, Anda
-              akan dipandu untuk instalasi.
+              Enter the details for the new server node. Once saved, you will be
+              guided through the installation.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleProceedToGuide}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
-                  Nama
+                  Name
                 </Label>
                 <Input
                   id="name"
@@ -531,13 +498,27 @@ export default function NodesClientPage({
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="location" className="text-right">
-                  Lokasi
+                  Location
                 </Label>
                 <Input
                   id="location"
                   value={newNode.location}
                   onChange={(e) =>
                     setNewNode({ ...newNode, location: e.target.value })
+                  }
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="snmpCommunity" className="text-right">
+                  SNMP Community
+                </Label>
+                <Input
+                  id="snmpCommunity"
+                  value={newNode.snmpCommunity}
+                  onChange={(e) =>
+                    setNewNode({ ...newNode, snmpCommunity: e.target.value })
                   }
                   className="col-span-3"
                   disabled={isSubmitting}
@@ -550,13 +531,13 @@ export default function NodesClientPage({
                 variant="outline"
                 onClick={() => setIsAddModalOpen(false)}
               >
-                Batal
+                Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Lanjutkan ke Panduan
+                )}{" "}
+                Continue to Guide
               </Button>
             </DialogFooter>
           </form>
@@ -567,9 +548,7 @@ export default function NodesClientPage({
         open={isGuideModalOpen}
         onOpenChange={(isOpen) => {
           setIsGuideModalOpen(isOpen);
-          if (!isOpen) {
-            setNodeForGuide(null);
-          }
+          if (!isOpen) setNodeForGuide(null);
         }}
       >
         <DialogContent className="max-w-3xl">
@@ -586,16 +565,15 @@ export default function NodesClientPage({
       </Dialog>
 
       <Toaster />
-      {/* Letakkan ini di bagian bawah return() dari komponen halaman Anda */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Konfirmasi Penghapusan</DialogTitle>
+            <DialogTitle>Delete Confirmation</DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus node{" "}
-              <span className="font-bold">{nodeToDelete?.name}</span>? Tindakan ini
-              akan mengirim perintah ke agen untuk menghapus dirinya sendiri dan tidak
-              dapat dibatalkan.
+              Are you sure you want to delete the node{" "}
+              <span className="font-bold">{nodeToDelete?.name}</span>? This
+              action will send a command to the agent to remove itself and
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -603,15 +581,17 @@ export default function NodesClientPage({
               variant="outline"
               onClick={() => setIsDeleteModalOpen(false)}
             >
-              Batal
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={isSubmitting}
             >
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Ya, Hapus
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}{" "}
+              Yes, Delete
             </Button>
           </DialogFooter>
         </DialogContent>

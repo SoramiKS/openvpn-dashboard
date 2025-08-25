@@ -86,7 +86,7 @@ export default function UserManagementPage() {
         const response = await fetch(`/api/users?${params.toString()}`);
         if (!response.ok)
           throw new Error(
-            (await response.json()).message || "Gagal mengambil data pengguna."
+            (await response.json()).message || "Failed to fetch user data."
           );
         const { data, total } = await response.json();
         setUsers(data);
@@ -103,14 +103,14 @@ export default function UserManagementPage() {
       }
     },
     [filters, toast]
-  ); // Hapus currentPage dari dependensi
+  ); // Remove currentPage from dependencies
 
-  // useEffect untuk mengambil data saat halaman berubah
+  // useEffect to fetch data when page changes
   useEffect(() => {
     fetchUsers(currentPage);
   }, [currentPage, fetchUsers]);
 
-  // useEffect untuk me-reset halaman saat filter berubah
+  // useEffect to reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
@@ -133,7 +133,7 @@ export default function UserManagementPage() {
       if (Object.keys(payload).length === 0) {
         toast({
           title: "Info",
-          description: "Tidak ada perubahan yang disimpan.",
+          description: "No changes were saved.",
         });
         setUserToEdit(null);
         return;
@@ -145,11 +145,11 @@ export default function UserManagementPage() {
       });
       if (!response.ok)
         throw new Error(
-          (await response.json()).message || "Gagal memperbarui pengguna."
+          (await response.json()).message || "Failed to update user."
         );
       toast({
-        title: "Berhasil",
-        description: `Pengguna ${userToEdit.email} berhasil diperbarui.`,
+        title: "Success",
+        description: `User ${userToEdit.email} was successfully updated.`,
       });
       setUserToEdit(null);
       fetchUsers(currentPage);
@@ -176,11 +176,11 @@ export default function UserManagementPage() {
       });
       if (!response.ok)
         throw new Error(
-          (await response.json()).message || "Gagal menghapus pengguna."
+          (await response.json()).message || "Failed to delete user."
         );
       toast({
-        title: "Berhasil",
-        description: `Pengguna ${userToDelete.email} berhasil dihapus.`,
+        title: "Success",
+        description: `User ${userToDelete.email} was successfully deleted.`,
       });
       setUserToDelete(null);
       if (users.length === 1 && currentPage > 1) {
@@ -208,9 +208,9 @@ export default function UserManagementPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
+          <h1 className="text-3xl font-bold">User Management</h1>
           <p className="text-gray-600">
-            Tambah, lihat, dan kelola pengguna sistem.
+            Add, view, and manage system users.
           </p>
         </div>
         <AddUserDialog onUserAdded={() => fetchUsers(1)} />
@@ -220,7 +220,7 @@ export default function UserManagementPage() {
         <CardHeader>
           <div className="flex flex-col md:flex-row gap-4">
             <Input
-              placeholder="Cari berdasarkan email..."
+              placeholder="Search by email..."
               value={filters.search}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, search: e.target.value }))
@@ -234,10 +234,10 @@ export default function UserManagementPage() {
               }
             >
               <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filter Peran" />
+                <SelectValue placeholder="Filter Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Peran</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value={Role.ADMIN}>Admin</SelectItem>
                 <SelectItem value={Role.USER}>User</SelectItem>
               </SelectContent>
@@ -249,9 +249,9 @@ export default function UserManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
-                <TableHead>Peran</TableHead>
-                <TableHead>Tanggal Dibuat</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -264,7 +264,7 @@ export default function UserManagementPage() {
               ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    Tidak ada pengguna ditemukan.
+                    No users found.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -299,8 +299,8 @@ export default function UserManagementPage() {
                         disabled={session?.user?.id === user.id}
                         title={
                           session?.user?.id === user.id
-                            ? "Tidak bisa menghapus diri sendiri"
-                            : "Hapus Pengguna"
+                            ? "Cannot delete yourself"
+                            : "Delete User"
                         }
                       >
                         <Trash2 className="h-4 w-4" />
@@ -352,15 +352,15 @@ export default function UserManagementPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Pengguna: {userToEdit?.email}</DialogTitle>
+            <DialogTitle>Edit User: {userToEdit?.email}</DialogTitle>
             <DialogDescription>
-              Anda bisa mengubah peran atau mengatur ulang password pengguna.
+              You can change the role or reset the user’s password.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="role-edit" className="text-right">
-                Peran
+                Role
               </Label>
               <Select
                 value={editData.role}
@@ -369,7 +369,7 @@ export default function UserManagementPage() {
                 }
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Pilih Peran" />
+                  <SelectValue placeholder="Choose Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={Role.USER}>User</SelectItem>
@@ -379,7 +379,7 @@ export default function UserManagementPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="password-edit" className="text-right">
-                Password Baru
+                New Password
               </Label>
               <Input
                 id="password-edit"
@@ -389,19 +389,19 @@ export default function UserManagementPage() {
                   setEditData((prev) => ({ ...prev, password: e.target.value }))
                 }
                 className="col-span-3"
-                placeholder="Kosongkan jika tidak diubah"
+                placeholder="Leave empty if not changed"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUserToEdit(null)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleUpdateUser} disabled={isSubmitting}>
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}{" "}
-              Simpan Perubahan
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -413,16 +413,16 @@ export default function UserManagementPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Konfirmasi Hapus Pengguna</DialogTitle>
+            <DialogTitle>Confirm Delete User</DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus pengguna{" "}
-              <span className="font-bold">{userToDelete?.email}</span>? Tindakan
-              ini tidak dapat dibatalkan.
+              Are you sure you want to delete user{" "}
+              <span className="font-bold">{userToDelete?.email}</span>? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUserToDelete(null)}>
-              Batal
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -432,7 +432,7 @@ export default function UserManagementPage() {
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}{" "}
-              Ya, Hapus
+              Yes, Delete
             </Button>
           </DialogFooter>
         </DialogContent>

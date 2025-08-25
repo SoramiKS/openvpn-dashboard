@@ -74,9 +74,11 @@ model Node {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  snmpCommunity String?
   vpnUsers     VpnUser[]     // Node has many VpnUsers
   actionLogs   ActionLog[]   // Node has many ActionLogs
   vpnActivityLogs VpnActivityLog[] // Add this line
+  
 }
 
 model VpnUser {

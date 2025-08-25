@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react"; // Sesuaikan dengan library otentikasi Anda
+import { useSession } from "next-auth/react"; // Adjust based on your auth library
 import { Role } from "@prisma/client";
 
-// Komponen ini menerima prop 'onUserAdded' untuk merefresh data di halaman utama
+// This component accepts the 'onUserAdded' prop to refresh data on the main page
 export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
@@ -36,14 +36,14 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
   const { toast } = useToast();
 
   const handleCreateUser = async () => {
-    // Validasi input sederhana
+    // Simple validation
     if (!email || !password) {
-        toast({ title: "Error", description: "Email dan password wajib diisi.", variant: "destructive" });
-        return;
+      toast({ title: "Error", description: "Email and password are required.", variant: "destructive" });
+      return;
     }
-     if (password.length < 8) {
-        toast({ title: "Error", description: "Password minimal harus 8 karakter.", variant: "destructive" });
-        return;
+    if (password.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters long.", variant: "destructive" });
+      return;
     }
 
     setIsSubmitting(true);
@@ -57,18 +57,18 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Gagal membuat pengguna.");
+        throw new Error(data.message || "Failed to create user.");
       }
 
       toast({
-        title: "Berhasil!",
-        description: `Pengguna ${data.email} dengan peran ${data.role} berhasil dibuat.`,
+        title: "Success!",
+        description: `User ${data.email} with role ${data.role} has been created successfully.`,
       });
       
-      // Panggil callback untuk merefresh tabel di halaman utama
+      // Call callback to refresh table in the main page
       onUserAdded();
       
-      // Reset form dan tutup dialog
+      // Reset form and close dialog
       setIsOpen(false);
       setEmail("");
       setPassword("");
@@ -83,7 +83,7 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
     }
   };
 
-  // Tombol hanya akan ditampilkan jika pengguna adalah ADMIN
+  // Only show button if user is ADMIN
   if (session?.user?.role !== 'ADMIN') {
     return null;
   }
@@ -93,14 +93,14 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Tambah Pengguna
+          Add User
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+          <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Buat akun baru dan tentukan perannya di sistem.
+            Create a new account and assign a role in the system.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -113,10 +113,10 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" disabled={isSubmitting} />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">Peran</Label>
+            <Label htmlFor="role" className="text-right">Role</Label>
             <Select value={role} onValueChange={(value: Role) => setRole(value)} disabled={isSubmitting}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Pilih Peran" />
+                <SelectValue placeholder="Select Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={Role.USER}>User</SelectItem>
@@ -126,10 +126,10 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Batal</Button>
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancel</Button>
           <Button onClick={handleCreateUser} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Buat Pengguna
+            Create User
           </Button>
         </DialogFooter>
       </DialogContent>

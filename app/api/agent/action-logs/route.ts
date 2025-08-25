@@ -1,8 +1,8 @@
 import { ActionStatus } from '@prisma/client';
-import { NextResponse } from 'next/server';
-import prisma, { prismaConnectReady } from '@/lib/prisma'; // tambahin ini
+import { NextResponse, NextRequest } from 'next/server'; // Gunakan NextRequest untuk konsistensi
+import prisma from '@/lib/prisma';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) { // Gunakan NextRequest
   const authHeader = req.headers.get('Authorization');
   const agentApiKey = process.env.AGENT_API_KEY;
 
@@ -18,8 +18,6 @@ export async function GET(req: Request) {
   }
 
   try {
-    await prismaConnectReady;
-
     const pendingActions = await prisma.actionLog.findMany({
       where: {
         nodeId: serverId,
@@ -42,5 +40,8 @@ export async function GET(req: Request) {
     if (error instanceof Error) {
       return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
     }
+    // --- PERBAIKAN DI SINI ---
+    // Tambahkan respons default jika error bukan instance dari Error
+    return NextResponse.json({ message: 'An unknown internal server error occurred' }, { status: 500 });
   }
 }
