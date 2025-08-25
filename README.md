@@ -191,9 +191,20 @@ Repeat on each OpenVPN server you want to add.
 
 ---
 
-## 🔗 Related Repositories
+## 🔗 Integration with OpenVPN Agent
 
-- [OpenVPN Agent Repository](#)
+The **OpenVPN Dashboard** requires an **OpenVPN Agent** running on each server.  
+This agent is responsible for handling communication between the dashboard and the OpenVPN server, including status reporting, command execution, and log collection.  
+
+👉 [OpenVPN Agent Repository](https://github.com/SoramiKS/ovpn-agent-bash)
+
+### How It Works
+1. Deploy the agent on every OpenVPN server you want to manage.
+2. Connect the agent to the dashboard using the provided `API_KEY` and unique `SERVER_ID`.
+3. Once connected, the dashboard will automatically detect the server and display:  
+   - Real-time server metrics  
+   - VPN profiles assigned to users  
+   - Connection logs and activities  
 
 ---
 
