@@ -112,6 +112,7 @@ GRANT ALL PRIVILEGES ON DATABASE vpndashboard TO ovpn;
 4. Configure `.env`  
 ```bash
 DATABASE_URL="postgresql://ovpn:StrongPasswordHere@localhost:5432/vpndashboard"
+AGENT_API_KEY="YourRandomAPIKey"
 NEXTAUTH_SECRET="YourRandomSecureSecret"
 NEXTAUTH_URL="https://dashboard.yourdomain.com"
 NEXT_PUBLIC_DASHBOARD_URL="https://dashboard.yourdomain.com"
