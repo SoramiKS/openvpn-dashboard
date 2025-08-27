@@ -3,6 +3,8 @@
 import { ActionType, ActionStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma'; // Using global PrismaClient instance
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 
 interface CreateProfileRequestBody {
   username: string;
@@ -42,6 +44,10 @@ export async function GET() {
 // --- POST Request (Create a new VPN User/Profile) ---
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
     // Reverted: Removed withPassword and password from destructuring
     const { username, nodeId }: CreateProfileRequestBody = await req.json();
 
@@ -62,6 +68,13 @@ export async function POST(req: Request) {
     if (existingVpnUser) {
       return NextResponse.json({ message: `VPN profile for '${username}' already exists.` }, { status: 409 });
     }
+    // --- PERBAIKAN DI SINI ---
+    // Ganti nama variabel 'node' menjadi 'targetNode'
+    const targetNode = await prisma.node.findUnique({ where: { id: nodeId } });
+    if (!targetNode) {
+      return NextResponse.json({ message: 'Node not found' }, { status: 404 });
+    }
+    // --- AKHIR PERBAIKAN ---
 
     // Check if there's an existing pending CREATE_USER action for this username
     const existingPendingAction = await prisma.actionLog.findFirst({
@@ -87,6 +100,8 @@ export async function POST(req: Request) {
         // Reverted: Saving the normalized username directly
         details: normalizedUsername,
         status: ActionStatus.PENDING,
+        initiatorId: session.user.id, // Log the admin who initiated the action
+        nodeNameSnapshot: targetNode.name,
       },
     });
 

@@ -1,3 +1,4 @@
+// components/NodeCopyButton.tsx
 "use client";
 
 import { useState } from "react";

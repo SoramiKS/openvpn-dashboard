@@ -1,3 +1,4 @@
+// app/api/logs/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse, NextRequest } from 'next/server';
 
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
             include: {
                 node: { select: { name: true } },
                 vpnUser: { select: { username: true } },
+                initiator: { select: { email: true } },
             },
         }),
         prisma.actionLog.count(),

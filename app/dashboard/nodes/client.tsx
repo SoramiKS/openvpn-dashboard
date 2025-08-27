@@ -1,3 +1,4 @@
+// app/dashboard/nodes/client.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -85,20 +86,22 @@ export default function NodesClientPage({
     return () => clearInterval(interval);
   }, [fetchNodes]);
 
-  useEffect(() => {
-    const triggerMetricsUpdate = () => {
-      if (nodes.length === 0) return;
-      nodes.forEach((node) => {
-        if (node.status === NodeStatus.ONLINE) {
-          fetch(`/api/nodes/${node.id}/metrics`).catch((error) =>
-            console.error(`Failed to trigger metrics update for ${node.name}:`, error)
-          );
-        }
-      });
-    };
-    const interval = setInterval(triggerMetricsUpdate, 10000);
-    return () => clearInterval(interval);
-  }, [nodes]);
+
+  //pakek snmp di disable dulu
+  // useEffect(() => {
+  //   const triggerMetricsUpdate = () => {
+  //     if (nodes.length === 0) return;
+  //     nodes.forEach((node) => {
+  //       if (node.status === NodeStatus.ONLINE) {
+  //         fetch(`/api/nodes/${node.id}/metrics`).catch((error) =>
+  //           console.error(`Failed to trigger metrics update for ${node.name}:`, error)
+  //         );
+  //       }
+  //     });
+  //   };
+  //   const interval = setInterval(triggerMetricsUpdate, 10000);
+  //   return () => clearInterval(interval);
+  // }, [nodes]);
 
   useEffect(() => {
     if (nodeForGuide) setIsGuideModalOpen(true);

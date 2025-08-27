@@ -1,3 +1,4 @@
+// app/api/profiles/[id]/revoke/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest, context: any) {
   const { id } = context.params;
 
   const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json(
       { message: "Unauthorized: Not logged in." },
       { status: 401 }
@@ -27,7 +28,8 @@ export async function POST(req: NextRequest, context: any) {
   try {
     const vpnUser = await prisma.vpnUser.findUnique({
       where: { id },
-      select: { id: true, username: true, nodeId: true, status: true },
+      select: { id: true, username: true, nodeId: true, status: true, node: { select: { name: true } } },
+
     });
 
     if (!vpnUser) {
@@ -44,6 +46,13 @@ export async function POST(req: NextRequest, context: any) {
       );
     }
 
+    // --- PERBAIKAN KECIL UNTUK KEAMANAN ---
+    if (!vpnUser.node) {
+      // Ini seharusnya tidak terjadi, tapi bagus untuk dicek
+      return NextResponse.json({ message: "Associated node not found for this user." }, { status: 404 });
+    }
+    // --- AKHIR PERBAIKAN KECIL ---
+
     await prisma.actionLog.create({
       data: {
         action: ActionType.REVOKE_USER,
@@ -51,6 +60,8 @@ export async function POST(req: NextRequest, context: any) {
         vpnUserId: vpnUser.id,
         details: vpnUser.username,
         status: ActionStatus.PENDING,
+        initiatorId: session.user.id,
+        nodeNameSnapshot: vpnUser.node.name,
       },
     });
 

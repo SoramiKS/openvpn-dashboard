@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "next dev & ts-node server.ts",
+    "build": "next build && tsc lib/wss.ts --outDir dist/lib",
+    "start": "NODE_ENV=production node server.js",
     "lint": "next lint"
   },
   "dependencies": {
@@ -69,6 +69,7 @@
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -80,6 +81,7 @@
     "@types/react-dom": "^18.3.7",
     "@types/react-google-recaptcha": "^2.1.9",
     "@types/react-simple-maps": "^3.0.6",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.9.2"
   }
 }

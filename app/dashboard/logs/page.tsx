@@ -1,3 +1,4 @@
+// app/dashboard/logs/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -57,8 +58,10 @@ import {
 
 // Extended types
 interface ExtendedActionLog extends ActionLog {
-  node: { name: string };
+  node: { name: string } | null;
   vpnUser: { username: string } | null;
+  initiator: { email: string } | null;
+  nodeNameSnapshot: string | null;
 }
 interface ExtendedVpnActivityLog extends VpnActivityLog {
   node: { name: string };
@@ -366,6 +369,7 @@ export default function LogsPage() {
                   <TableHead>Action</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>User/Details</TableHead>
+                  <TableHead>Initiator</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -381,7 +385,15 @@ export default function LogsPage() {
                       <TableCell>
                         {new Date(log.createdAt).toLocaleString()}
                       </TableCell>
-                      <TableCell>{log.node?.name || "N/A"}</TableCell>
+                      <TableCell>
+                        {log.node ? (
+                          log.node.name
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            {log.nodeNameSnapshot || "[Node Deleted]"}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>{log.action}</TableCell>
                       <TableCell>
                         <Badge variant={getLogStatusBadgeVariant(log.status)}>
@@ -396,6 +408,9 @@ export default function LogsPage() {
                           ? `User: ${log.vpnUser.username}`
                           : log.details}
                         {log.message && ` - ${log.message}`}
+                      </TableCell>
+                      <TableCell>
+                        {log.initiator?.email || 'System'}
                       </TableCell>
                     </TableRow>
                   ))

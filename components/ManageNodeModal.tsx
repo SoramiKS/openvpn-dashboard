@@ -1,3 +1,4 @@
+// components/ManageNodeModal.tsx
 "use client"
 
 import {
@@ -87,7 +88,7 @@ export function ManageNodeModal({ open, onClose, node, onNodeUpdated, onNodeDele
 
     setIsSaving(true)
     try {
-      const res = await fetch(`/api/servers/${node.id}`, {
+      const res = await fetch(`/api/nodes/${node.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -122,7 +123,7 @@ export function ManageNodeModal({ open, onClose, node, onNodeUpdated, onNodeDele
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/servers/${node.id}`, {
+      const res = await fetch(`/api/nodes/${node.id}`, {
         method: "DELETE",
       })
 

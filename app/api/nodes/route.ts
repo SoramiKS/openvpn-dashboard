@@ -1,8 +1,9 @@
+// app/api/nodes/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { NodeStatus } from "@prisma/client";
+import { ActionStatus, ActionType, NodeStatus } from "@prisma/client";
 import { randomBytes } from 'crypto';
 import { Prisma } from "@prisma/client";
 import { subMinutes } from "date-fns";
@@ -114,6 +115,20 @@ export async function POST(req: NextRequest) {
         snmpCommunity: snmpCommunity || 'public',
       },
     });
+
+        // --- TAMBAHKAN BLOK INI ---
+    // Membuat log audit setelah node berhasil dibuat
+    await prisma.actionLog.create({
+      data: {
+        action: ActionType.CREATE_NODE,
+        status: ActionStatus.COMPLETED,
+        details: `Node '${newNode.name}' was created.`,
+        nodeId: newNode.id, // Tautkan log ke node yang baru dibuat
+        initiatorId: session.user.id, // Catat siapa yang membuatnya
+        nodeNameSnapshot: newNode.name,
+      }
+    });
+    // --- AKHIR BLOK TAMBAHAN ---
 
     return NextResponse.json({ message: 'Node created successfully.', node: newNode }, { status: 201 });
 

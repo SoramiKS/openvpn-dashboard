@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -9,17 +10,16 @@ import { Node, VpnUser, VpnCertificateStatus, NodeStatus, ActionLog, VpnActivity
 
 // Tipe data yang diperluas
 interface NodeWithMetrics extends Node { cpuUsage: number; ramUsage: number; }
-// PERBAIKAN: Tipe spesifik untuk log gabungan
 type RecentLog = (ActionLog & { node: { name: string } }) | (VpnActivityLog & { node: { name: string } });
 
-// Fungsi format byte
+// Fungsi format byte (tetap sama)
 const formatBytes = (bytes: number | string | bigint | null | undefined, decimals = 2) => {
-    if (bytes === null || bytes === undefined || Number(bytes) === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
-    return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  if (bytes === null || bytes === undefined || Number(bytes) === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
+  return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
 export default function DashboardPage() {
@@ -30,8 +30,9 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchDashboardData = useCallback(async () => {
-    if (nodesData.length === 0) setIsLoading(true);
+  // Fungsi fetch data awal tetap diperlukan untuk memuat data saat pertama kali halaman dibuka
+  const fetchInitialDashboardData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [nodesRes, usersRes, recentLogsRes, trafficRes] = await Promise.all([
         fetch("/api/nodes"),
@@ -56,14 +57,59 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, nodesData.length]);
+  }, [toast]);
 
+  // --- BAGIAN BARU: LOGIKA WEBSOCKET ---
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+    // 1. Panggil data awal sekali saja saat komponen dimuat
+    fetchInitialDashboardData();
 
+    // 2. Tentukan URL WebSocket (wss untuk produksi, ws untuk development)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsProtocol}://${window.location.host}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log("✅ Koneksi WebSocket ke dashboard server berhasil dibuat.");
+    };
+
+    // 3. Logika utama: Apa yang harus dilakukan saat ada pesan masuk
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+
+      // Cek tipe pesan yang masuk
+      if (message.type === 'NODE_STATUS_UPDATE') {
+        const updatedNode = message.payload;
+
+        // Perbarui state 'nodesData' secara cerdas
+        setNodesData(prevNodes =>
+          prevNodes.map(node =>
+            node.id === updatedNode.id
+              ? { ...node, status: updatedNode.status, lastSeen: updatedNode.lastSeen }
+              : node
+          )
+        );
+      }
+      // Anda bisa menambahkan handler untuk tipe pesan lain di sini, misal 'METRICS_UPDATE'
+    };
+
+    ws.onclose = () => {
+      console.log("🔌 Koneksi WebSocket terputus.");
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket Error:", error);
+    };
+
+    // 4. Membersihkan koneksi saat komponen tidak lagi ditampilkan
+    return () => {
+      ws.close();
+    };
+  }, [fetchInitialDashboardData]); // <-- Dependency hanya pada fungsi fetch awal
+
+
+  // --- TIDAK ADA PERUBAHAN DARI SINI KE BAWAH ---
+  // Semua logika useMemo, getSystemStatus, dan JSX tetap sama persis
   const stats = useMemo(() => {
     const onlineNodes = nodesData.filter(n => n.status === NodeStatus.ONLINE);
     const statusCounts = nodesData.reduce((acc, node) => { acc[node.status] = (acc[node.status] || 0) + 1; return acc; }, {} as Record<NodeStatus, number>);
@@ -101,88 +147,90 @@ export default function DashboardPage() {
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Nodes</CardTitle><Server className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalNodes}</div><p className="text-xs text-muted-foreground">{stats.onlineNodesCount} online</p></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Users</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalUsers}</div><p className="text-xs text-muted-foreground">{stats.validUsersCount} valid</p></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Sessions</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.activeSessions}</div><p className="text-xs text-muted-foreground">Currently connected</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Traffic (24h)</CardTitle><ArrowUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-lg font-bold flex items-center"><ArrowUp className="h-4 w-4 mr-2 text-gray-500"/>{formatBytes(trafficStats.totalSent)}</div><div className="text-lg font-bold flex items-center"><ArrowDown className="h-4 w-4 mr-2 text-gray-500"/>{formatBytes(trafficStats.totalReceived)}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Traffic (24h)</CardTitle><ArrowUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-lg font-bold flex items-center"><ArrowUp className="h-4 w-4 mr-2 text-gray-500" />{formatBytes(trafficStats.totalSent)}</div><div className="text-lg font-bold flex items-center"><ArrowDown className="h-4 w-4 mr-2 text-gray-500" />{formatBytes(trafficStats.totalReceived)}</div></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">System Status</CardTitle><Shield className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className={`text-2xl font-bold ${systemStatusInfo.color}`}>{systemStatusInfo.status}</div><p className="text-xs text-muted-foreground mt-1">{systemStatusInfo.description}</p></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-                {/* Node Status dengan Donut Chart */}
-                <Card>
-                    <CardHeader><CardTitle>Node Status</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                        <div className="h-48 w-full">
-                            <ResponsiveContainer>
-                                <PieChart>
-                                    <Pie data={stats.statusChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                                        {stats.statusChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#cccccc'} />))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="space-y-2">
-                            {stats.statusChartData.map((entry) => (
-                                <div key={entry.name} className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center"><span className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: COLORS[entry.name] || '#cccccc' }}></span><span>{entry.name}</span></div>
-                                    <span className="font-medium">{entry.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-                {/* Resource Usage dengan Rata-rata & Top 3 */}
-                <Card>
-                    <CardHeader><CardTitle>Average Resource Usage (Online Nodes)</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><Cpu className="h-4 w-4 mr-2" /> Average CPU</span><span>{stats.avgCpu}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgCpu)} h-2.5 rounded-full`} style={{ width: `${stats.avgCpu}%` }}></div></div></div>
-                            <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><MemoryStick className="h-4 w-4 mr-2" /> Average RAM</span><span>{stats.avgRam}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgRam)} h-2.5 rounded-full`} style={{ width: `${stats.avgRam}%` }}></div></div></div>
-                            <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (CPU)</h4>
-                                    <div className="space-y-2 text-xs text-muted-foreground">{stats.topCpuNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.cpuUsage}%</span></div>))}</div>
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (RAM)</h4>
-                                    <div className="space-y-2 text-xs text-muted-foreground">{stats.topRamNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.ramUsage}%</span></div>))}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+              {/* Node Status dengan Donut Chart */}
+              <Card>
+                <CardHeader><CardTitle>Node Status</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div className="h-48 w-full">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie data={stats.statusChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                          {stats.statusChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#cccccc'} />))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2">
+                    {stats.statusChartData.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center"><span className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: COLORS[entry.name] || '#cccccc' }}></span><span>{entry.name}</span></div>
+                        <span className="font-medium">{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Resource Usage dengan Rata-rata & Top 3 */}
+              <Card>
+                <CardHeader><CardTitle>Average Resource Usage (Online Nodes)</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><Cpu className="h-4 w-4 mr-2" /> Average CPU</span><span>{stats.avgCpu}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgCpu)} h-2.5 rounded-full`} style={{ width: `${stats.avgCpu}%` }}></div></div></div>
+                    <div><div className="flex items-center justify-between mb-1 text-sm font-medium"><span className="flex items-center"><MemoryStick className="h-4 w-4 mr-2" /> Average RAM</span><span>{stats.avgRam}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className={`${getProgressBarColor(stats.avgRam)} h-2.5 rounded-full`} style={{ width: `${stats.avgRam}%` }}></div></div></div>
+                    <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (CPU)</h4>
+                        <div className="space-y-2 text-xs text-muted-foreground">{stats.topCpuNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.cpuUsage}%</span></div>))}</div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Top 3 Utilized (RAM)</h4>
+                        <div className="space-y-2 text-xs text-muted-foreground">{stats.topRamNodes.map(node => (<div key={node.id} className="flex justify-between"><span>{node.name}</span><span className="font-mono">{node.ramUsage}%</span></div>))}</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Aktivitas Terbaru */}
             <Card className="lg:col-span-1">
-                <CardHeader><CardTitle>Recent Activities</CardTitle></CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {recentLogs.length === 0 ? <p className="text-sm text-muted-foreground">No recent activities.</p> : 
-                        recentLogs.map(log => {
-                            // --- PERBAIKAN: Gunakan type guard untuk membedakan log ---
-                            const isActionLog = 'details' in log;
-                            const logDate = isActionLog ? log.createdAt : log.timestamp;
-                            const logAction = log.action;
-                            
-                            return (
-                                <div key={log.id} className="flex items-start space-x-3">
-                                    <div className="flex-shrink-0">
-                                        <div className={`h-2 w-2 rounded-full mt-1.5 ${logAction === 'CONNECT' ? 'bg-green-500' : logAction === 'DISCONNECT' ? 'bg-gray-400' : 'bg-blue-500'}`}></div>
-                                    </div>
-                                    <div className="text-sm">
-                                        {isActionLog ? (
-                                            <p>User <span className="font-semibold">{log.details}</span> was {log.action === 'CREATE_USER' ? 'created' : 'revoked'} on <span className="font-semibold">{log.node.name}</span>.</p>
-                                        ) : (
-                                            <p>User <span className="font-semibold">{log.username}</span> {log.action.toLowerCase()} to <span className="font-semibold">{log.node.name}</span>.</p>
-                                        )}
-                                        <p className="text-xs text-muted-foreground">{new Date(logDate).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </CardContent>
+              <CardHeader><CardTitle>Recent Activities</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentLogs.length === 0 ? <p className="text-sm text-muted-foreground">No recent activities.</p> :
+                    recentLogs.map(log => {
+                      // --- PERBAIKAN: Gunakan type guard untuk membedakan log ---
+                      const isActionLog = 'details' in log;
+                      const logDate = isActionLog ? log.createdAt : log.timestamp;
+                      const logAction = log.action;
+
+                      return (
+                        <div key={log.id} className="flex items-start space-x-3">
+                          <div className="flex-shrink-0">
+                            <div className={`h-2 w-2 rounded-full mt-1.5 ${logAction === 'CONNECT' ? 'bg-green-500' : logAction === 'DISCONNECT' ? 'bg-gray-400' : 'bg-blue-500'}`}></div>
+                          </div>
+                          <div className="text-sm">
+                            {isActionLog ? (
+                              <p>
+                                User <span className="font-semibold">{log.details}</span> was {log.action === 'CREATE_USER' ? 'created' : 'revoked'} on <span className="font-semibold">{log.nodeNameSnapshot ?? 'Unknown node'}</span>.
+                              </p>
+                            ) : (
+                              <p>User <span className="font-semibold">{log.username}</span> {log.action.toLowerCase()} to <span className="font-semibold">{log.node.name}</span>.</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">{new Date(logDate).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </CardContent>
             </Card>
           </div>
         </>
