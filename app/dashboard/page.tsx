@@ -218,7 +218,9 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-sm">
                             {isActionLog ? (
-                              <p>User <span className="font-semibold">{log.details}</span> was {log.action === 'CREATE_USER' ? 'created' : 'revoked'} on <span className="font-semibold">{log.node.name}</span>.</p>
+                              <p>
+                                User <span className="font-semibold">{log.details}</span> was {log.action === 'CREATE_USER' ? 'created' : 'revoked'} on <span className="font-semibold">{log.nodeNameSnapshot ?? 'Unknown node'}</span>.
+                              </p>
                             ) : (
                               <p>User <span className="font-semibold">{log.username}</span> {log.action.toLowerCase()} to <span className="font-semibold">{log.node.name}</span>.</p>
                             )}
