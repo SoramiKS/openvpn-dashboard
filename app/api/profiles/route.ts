@@ -68,6 +68,13 @@ export async function POST(req: Request) {
     if (existingVpnUser) {
       return NextResponse.json({ message: `VPN profile for '${username}' already exists.` }, { status: 409 });
     }
+    // --- PERBAIKAN DI SINI ---
+    // Ganti nama variabel 'node' menjadi 'targetNode'
+    const targetNode = await prisma.node.findUnique({ where: { id: nodeId } });
+    if (!targetNode) {
+      return NextResponse.json({ message: 'Node not found' }, { status: 404 });
+    }
+    // --- AKHIR PERBAIKAN ---
 
     // Check if there's an existing pending CREATE_USER action for this username
     const existingPendingAction = await prisma.actionLog.findFirst({
@@ -94,6 +101,7 @@ export async function POST(req: Request) {
         details: normalizedUsername,
         status: ActionStatus.PENDING,
         initiatorId: session.user.id, // Log the admin who initiated the action
+        nodeNameSnapshot: targetNode.name,
       },
     });
 

@@ -58,9 +58,10 @@ import {
 
 // Extended types
 interface ExtendedActionLog extends ActionLog {
-  node: { name: string };
+  node: { name: string } | null;
   vpnUser: { username: string } | null;
   initiator: { email: string } | null;
+  nodeNameSnapshot: string | null;
 }
 interface ExtendedVpnActivityLog extends VpnActivityLog {
   node: { name: string };
@@ -384,7 +385,15 @@ export default function LogsPage() {
                       <TableCell>
                         {new Date(log.createdAt).toLocaleString()}
                       </TableCell>
-                      <TableCell>{log.node?.name || "N/A"}</TableCell>
+                      <TableCell>
+                        {log.node ? (
+                          log.node.name
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            {log.nodeNameSnapshot || "[Node Deleted]"}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>{log.action}</TableCell>
                       <TableCell>
                         <Badge variant={getLogStatusBadgeVariant(log.status)}>

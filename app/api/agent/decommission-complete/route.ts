@@ -1,7 +1,7 @@
 // app/api/agent/decommission-complete/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse, NextRequest } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma, ActionType, ActionStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
     try {
@@ -12,12 +12,37 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Server ID is required.' }, { status: 400 });
         }
 
-        // --- PERBAIKAN: Ganti 'update' menjadi 'delete' ---
-        // Ini akan menghapus node dan semua data terkait (log, profil) secara permanen
-        await prisma.node.delete({
-            where: { id: serverId },
+        // Gunakan transaksi untuk memastikan kedua aksi berhasil atau tidak sama sekali
+        await prisma.$transaction(async (tx) => {
+            // 1. Cari log DECOMMISSION_AGENT yang relevan dan masih PENDING
+            const decommissionLog = await tx.actionLog.findFirst({
+                where: {
+                    nodeId: serverId,
+                    action: ActionType.DECOMMISSION_AGENT,
+                    status: ActionStatus.PENDING
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+
+            // 2. Jika ditemukan, perbarui statusnya menjadi COMPLETED
+            if (decommissionLog) {
+                await tx.actionLog.update({
+                    where: { id: decommissionLog.id },
+                    data: {
+                        status: ActionStatus.COMPLETED,
+                        message: "Agent confirmed decommission and has been removed.",
+                        executedAt: new Date()
+                    }
+                });
+            }
+
+            // 3. Lanjutkan untuk menghapus node secara permanen
+            await tx.node.delete({
+                where: { id: serverId },
+            });
         });
-        // --- AKHIR PERBAIKAN ---
 
         console.log(`Node ${serverId} has been successfully decommissioned and hard-deleted.`);
         return NextResponse.json({ message: 'Decommission confirmed and node deleted.' });

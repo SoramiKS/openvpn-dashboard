@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { Prisma, ActionType, NodeStatus } from "@prisma/client";
+import { Prisma, ActionType, NodeStatus, ActionStatus } from "@prisma/client";
 
 async function checkAdminSession() {
   const session = await getServerSession(authOptions);
@@ -51,13 +51,29 @@ export async function DELETE(request: NextRequest) {
   try {
     const nodeIdToDelete = request.nextUrl.pathname.split("/").pop();
     if (!nodeIdToDelete) {
-        return NextResponse.json({ message: "Node ID not found in URL." }, { status: 400 });
+      return NextResponse.json({ message: "Node ID not found in URL." }, { status: 400 });
     }
 
     const node = await prisma.node.findUnique({ where: { id: nodeIdToDelete } });
     if (!node) {
       return NextResponse.json({ message: "Node not found." }, { status: 404 });
     }
+
+    const session = await getServerSession(authOptions);
+
+    // --- TAMBAHKAN BLOK INI ---
+    // Buat log SEBELUM melakukan aksi hapus
+    await prisma.actionLog.create({
+      data: {
+        action: ActionType.DELETE_NODE,
+        status: ActionStatus.COMPLETED,
+        details: `Deletion initiated for node '${node.name}'.`,
+        nodeId: nodeIdToDelete,
+        initiatorId: session!.user!.id, // Kita tahu sesi ada dari checkAdminSession
+        nodeNameSnapshot: node.name,
+      }
+    });
+    // --- AKHIR BLOK TAMBAHAN ---
 
     // If node is ONLINE, send self-destruct command and start soft delete
     if (node.status === NodeStatus.ONLINE) {
@@ -67,12 +83,13 @@ export async function DELETE(request: NextRequest) {
           action: ActionType.DECOMMISSION_AGENT,
           status: "PENDING",
           details: `Self-deletion command sent to agent on node ${node.name}.`,
+          nodeNameSnapshot: node.name,
         },
       });
       // Change status to DELETING and record the timestamp
       const updatedNode = await prisma.node.update({
         where: { id: nodeIdToDelete },
-        data: { 
+        data: {
           status: NodeStatus.DELETING,
           deletionStartedAt: new Date() // Record when deletion started
         },
