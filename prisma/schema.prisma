@@ -58,6 +58,8 @@ model User {
 
   // Relasi: Satu User dashboard memiliki satu profil VpnUser
   vpnProfile VpnUser?
+
+  ActionLog ActionLog[]
 }
 
 model Node {
@@ -110,24 +112,26 @@ model VpnUser {
 // Ini adalah model yang akan digunakan agen untuk mengambil perintah dari dasbor
 model ActionLog {
   id              String       @id @default(uuid())
-  action          ActionType   // Tipe aksi yang diminta (misal: CREATE_USER)
-  status          ActionStatus @default(PENDING) // Status eksekusi: PENDING, COMPLETED, FAILED
-  message         String?      // Pesan detail dari agen (misal: "User created successfully")
-  
-  nodeId          String       // Setiap aksi harus ditujukan ke Node tertentu
-  node            Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  
-  vpnUserId       String?      // Opsional, jika aksi terkait dengan VpnUser
-  vpnUser         VpnUser?     @relation(fields: [vpnUserId], references: [id], onDelete: SetNull) // SetNull jika VpnUser dihapus
+  action          ActionType
+  status          ActionStatus @default(PENDING)
+  message         String?
 
+  nodeId          String
+  node            Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  vpnUserId       String?
+  vpnUser         VpnUser?     @relation(fields: [vpnUserId], references: [id], onDelete: SetNull)
 
   details         String?
+  ovpnFileContent String?
 
-  ovpnFileContent String?      // Hanya diisi oleh agen jika aksi adalah CREATE_USER atau GET_LATEST_OVPN
+  
+  initiatorId     String?      // Menyimpan ID dari admin yang melakukan aksi
+  initiator       User?        @relation(fields: [initiatorId], references: [id], onDelete: SetNull)
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  executedAt      DateTime?    // Kapan aksi ini dieksekusi oleh agen
+  executedAt      DateTime?
 }
 
 model VpnActivityLog {

@@ -1,3 +1,4 @@
+// app/api/profiles/[id]/revoke/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest, context: any) {
   const { id } = context.params;
 
   const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json(
       { message: "Unauthorized: Not logged in." },
       { status: 401 }
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest, context: any) {
         vpnUserId: vpnUser.id,
         details: vpnUser.username,
         status: ActionStatus.PENDING,
+        initiatorId: session.user.id,
       },
     });
 

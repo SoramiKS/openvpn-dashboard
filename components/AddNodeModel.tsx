@@ -1,3 +1,4 @@
+// components/AddNodeModel.tsx
 "use client"
 
 import {
@@ -26,7 +27,7 @@ export function AddNodeModal({ onNodeAdded }: Props) {
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/servers", {
+      const res = await fetch("/api/nodes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, ipAddress, location }),

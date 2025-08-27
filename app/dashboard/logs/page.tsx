@@ -1,3 +1,4 @@
+// app/dashboard/logs/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -59,6 +60,7 @@ import {
 interface ExtendedActionLog extends ActionLog {
   node: { name: string };
   vpnUser: { username: string } | null;
+  initiator: { email: string } | null;
 }
 interface ExtendedVpnActivityLog extends VpnActivityLog {
   node: { name: string };
@@ -366,6 +368,7 @@ export default function LogsPage() {
                   <TableHead>Action</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>User/Details</TableHead>
+                  <TableHead>Initiator</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -396,6 +399,9 @@ export default function LogsPage() {
                           ? `User: ${log.vpnUser.username}`
                           : log.details}
                         {log.message && ` - ${log.message}`}
+                      </TableCell>
+                      <TableCell>
+                        {log.initiator?.email || 'System'}
                       </TableCell>
                     </TableRow>
                   ))

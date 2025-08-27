@@ -1,3 +1,4 @@
+// app/api/agent/decommission-complete/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse, NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';

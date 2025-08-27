@@ -1,3 +1,4 @@
+// app/dashboard/layout.tsx
 "use client";
 
 import { Sidebar, MobileSidebar } from "@/components/ui/sidebar";

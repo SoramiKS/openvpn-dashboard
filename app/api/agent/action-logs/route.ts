@@ -1,3 +1,4 @@
+// app/api/agent/action-logs/route.ts
 import { ActionStatus } from '@prisma/client';
 import { NextResponse, NextRequest } from 'next/server'; // Gunakan NextRequest untuk konsistensi
 import prisma from '@/lib/prisma';

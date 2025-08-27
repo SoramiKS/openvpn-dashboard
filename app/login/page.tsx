@@ -1,3 +1,4 @@
+// app/login/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react"; // 1. Import useRef
@@ -12,7 +13,7 @@ import ReCAPTCHA from "react-google-recaptcha";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 
-// --- Komponen untuk Form Login Biasa ---
+// --- Component for Regular Login Form ---
 const LoginForm = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -20,13 +21,13 @@ const LoginForm = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const router = useRouter();
-    const recaptchaRef = useRef<ReCAPTCHA>(null); // 2. Buat ref untuk reCAPTCHA
+    const recaptchaRef = useRef<ReCAPTCHA>(null); // 2. Create ref for reCAPTCHA
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         if (!recaptchaToken) {
-            setError("Silakan verifikasi bahwa Anda bukan robot.");
+            setError("Please verify that you are not a robot.");
             return;
         }
         setIsLoading(true);
@@ -34,7 +35,7 @@ const LoginForm = () => {
         setIsLoading(false);
         if (result?.error) {
             setError(result.error);
-            recaptchaRef.current?.reset(); // 3. Reset reCAPTCHA jika login gagal
+            recaptchaRef.current?.reset(); // 3. Reset reCAPTCHA if login fails
             setRecaptchaToken(null); // Reset token
         } else if (result?.ok) {
             router.push("/dashboard");
@@ -62,7 +63,7 @@ const LoginForm = () => {
     );
 };
 
-// --- Komponen untuk Form Setup Admin Pertama ---
+// --- Component for First Admin Setup Form ---
 const SetupForm = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -70,13 +71,13 @@ const SetupForm = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const { toast } = useToast();
-    const recaptchaRef = useRef<ReCAPTCHA>(null); // Lakukan hal yang sama di sini
+    const recaptchaRef = useRef<ReCAPTCHA>(null); // Do the same here
 
     const handleCreateAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         if (!recaptchaToken) {
-            setError("Silakan verifikasi bahwa Anda bukan robot.");
+            setError("Please verify that you are not a robot.");
             return;
         }
         setIsLoading(true);
@@ -87,13 +88,13 @@ const SetupForm = () => {
                 body: JSON.stringify({ email, password, recaptchaToken })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || "Gagal membuat admin.");
+            if (!response.ok) throw new Error(data.message || "Failed to create admin.");
 
-            toast({ title: "Admin Berhasil Dibuat!", description: "Halaman akan dimuat ulang. Silakan login." });
+            toast({ title: "Admin Created Successfully!", description: "The page will reload. Please log in." });
             setTimeout(() => window.location.reload(), 2000);
         } catch (err: unknown) {
             if (err instanceof Error) setError(err.message);
-            recaptchaRef.current?.reset(); // Reset jika gagal
+            recaptchaRef.current?.reset(); // Reset if failed
             setRecaptchaToken(null);
         } finally {
             setIsLoading(false);
@@ -104,12 +105,12 @@ const SetupForm = () => {
         <form onSubmit={handleCreateAdmin} className="space-y-5">
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">{error}</div>}
             <div className="space-y-2">
-                <Label htmlFor="admin-email">Email Admin</Label>
-                <Input id="admin-email" type="email" placeholder="Masukkan email admin..." value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Label htmlFor="admin-email">Admin Email</Label>
+                <Input id="admin-email" type="email" placeholder="Enter admin email..." value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="admin-password">Password Admin</Label>
-                <Input id="admin-password" type="password" placeholder="Minimal 8 karakter" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Label htmlFor="admin-password">Admin Password</Label>
+                <Input id="admin-password" type="password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <div className="flex justify-center">
                 <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!} onChange={setRecaptchaToken} onExpired={() => setRecaptchaToken(null)} />
@@ -121,7 +122,7 @@ const SetupForm = () => {
     );
 };
 
-// --- Komponen Halaman Login Utama ---
+// --- Main Login Page Component ---
 export default function LoginPage() {
     const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
 
@@ -129,13 +130,13 @@ export default function LoginPage() {
         fetch('/api/setup').then(res => res.json()).then(data => {
             setNeedsSetup(data.needsSetup);
         }).catch(error => {
-            console.error("Gagal memeriksa status setup:", error);
+            console.error("Failed to check setup status:", error);
             setNeedsSetup(false);
         });
     }, []);
 
-    const titleText = needsSetup ? "Setup Admin Pertama" : "OpenVPN Manager";
-    const descriptionText = needsSetup ? "Database kosong. Silakan buat akun admin pertama." : "Masuk ke akun Anda untuk mengelola VPN Anda.";
+    const titleText = needsSetup ? "First Admin Setup" : "OpenVPN Manager";
+    const descriptionText = needsSetup ? "Database is empty. Please create the first admin account." : "Log in to your account to manage your VPN.";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
