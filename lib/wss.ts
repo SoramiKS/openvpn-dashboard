@@ -15,12 +15,18 @@ export const initializeWebSocketServer = (server: Server) => {
 
     wss.on('connection', (ws) => {
       console.log('🔌 Client WebSocket baru terhubung!');
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+          ws.ping(); // Kirim sinyal ping
+        }
+      }, 25000); // 25 detik
 
       // Kirim pesan sambutan
       ws.send(JSON.stringify({ type: 'WELCOME', message: 'Anda berhasil terhubung ke WebSocket server.' }));
 
       ws.on('close', () => {
         console.log('🔌 Client WebSocket terputus.');
+        clearInterval(pingInterval); // Hentikan pengiriman ping
       });
     });
 
