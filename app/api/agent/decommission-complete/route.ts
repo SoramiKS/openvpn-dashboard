@@ -5,7 +5,7 @@ import { Prisma, ActionType, ActionStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = request.headers.get('Authorization'); // Gunakan 'request' dari parameter fungsi
+        const authHeader = req.headers.get('Authorization');
         const agentApiKey = process.env.AGENT_API_KEY;
 
         if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== agentApiKey) {
