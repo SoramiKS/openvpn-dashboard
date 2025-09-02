@@ -8,7 +8,7 @@ import { randomBytes } from 'crypto';
 import { Prisma } from "@prisma/client";
 import { subMinutes } from "date-fns";
 
-const OFFLINE_THRESHOLD_MS = 30 * 1000; // Consider offline if no report > 30 seconds
+const OFFLINE_THRESHOLD_MS = 90 * 1000; // Consider offline if no report > 90 seconds
 const DELETION_CLEANUP_MINUTES = 1; // Permanently delete after 1 minute
 
 export async function GET() {
