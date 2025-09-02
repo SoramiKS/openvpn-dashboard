@@ -1,30 +1,31 @@
 // app/nodes/page.tsx
-// Ini adalah Server Component secara default.
-// File ini akan menjadi entry point untuk rute /nodes.
+// This is a Server Component by default.
+// This file serves as the entry point for the /nodes route.
 
-import NodesClientPage from "./client"; // Ganti nama file klien menjadi client.tsx
+import NodesClientPage from "./client"; // Client component file
 
 export default function NodesPage() {
-  // Baca variabel lingkungan dari sisi server.
+  // Read environment variables from the server side.
   const agentApiKey = process.env.AGENT_API_KEY;
-  const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3000";
+  const dashboardUrl =
+    process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3000";
 
-  // Validasi penting: Pastikan variabel lingkungan sudah diatur.
+  // Critical validation: Ensure required environment variables are set.
   if (!agentApiKey) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="rounded-lg border border-red-500 bg-red-50 p-6 text-center text-red-700">
-          <h2 className="text-xl font-bold">Error Konfigurasi Server</h2>
+          <h2 className="text-xl font-bold">Server Configuration Error</h2>
           <p className="mt-2">
-            Variabel `AGENT_API_KEY` tidak ditemukan di environment server.
+            The <code>AGENT_API_KEY</code> environment variable was not found.
             <br />
-            Harap atur di file `.env.local` Anda dan restart server.
+            Please set it in your <code>.env.local</code> file and restart the server.
           </p>
         </div>
       </div>
     );
   }
 
-  // Teruskan data yang aman untuk dibaca klien sebagai props ke Client Component.
+  // Pass safe data to the Client Component as props.
   return <NodesClientPage apiKey={agentApiKey} dashboardUrl={dashboardUrl} />;
 }
