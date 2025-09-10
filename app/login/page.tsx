@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
 
 // --- Component for Regular Login Form ---
 const LoginForm = () => {
@@ -22,6 +23,8 @@ const LoginForm = () => {
     const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const router = useRouter();
     const recaptchaRef = useRef<ReCAPTCHA>(null); // 2. Create ref for reCAPTCHA
+    const [showPassword, setShowPassword] = useState(false);
+
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,9 +52,23 @@ const LoginForm = () => {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" placeholder="admin@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[2.2rem] text-gray-400 hover:text-gray-600"
+                >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
             </div>
             <div className="flex justify-center">
                 <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!} onChange={setRecaptchaToken} onExpired={() => setRecaptchaToken(null)} />
@@ -72,6 +89,7 @@ const SetupForm = () => {
     const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
     const { toast } = useToast();
     const recaptchaRef = useRef<ReCAPTCHA>(null); // Do the same here
+    const [showAdminPassword, setShowAdminPassword] = useState(false);
 
     const handleCreateAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,9 +126,23 @@ const SetupForm = () => {
                 <Label htmlFor="admin-email">Admin Email</Label>
                 <Input id="admin-email" type="email" placeholder="Enter admin email..." value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
                 <Label htmlFor="admin-password">Admin Password</Label>
-                <Input id="admin-password" type="password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Input
+                    id="admin-password"
+                    type={showAdminPassword ? "text" : "password"}
+                    placeholder="At least 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    className="absolute right-3 top-[2.2rem] text-gray-400 hover:text-gray-600"
+                >
+                    {showAdminPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
             </div>
             <div className="flex justify-center">
                 <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!} onChange={setRecaptchaToken} onExpired={() => setRecaptchaToken(null)} />
