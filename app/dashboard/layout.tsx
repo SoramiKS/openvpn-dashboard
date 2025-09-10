@@ -5,6 +5,7 @@ import { Sidebar, MobileSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { signOut } from "next-auth/react"; // SessionProvider tidak perlu diimpor lagi
+import { Toaster } from "@/components/ui/toaster";
 
 export default function DashboardLayout({
   children,
@@ -42,6 +43,7 @@ export default function DashboardLayout({
         {/* Cukup render children tanpa provider di sini */}
         <main className="flex-1 overflow-y-auto p-6">
           {children}
+          <Toaster />
         </main>
       </div>
     </div>
