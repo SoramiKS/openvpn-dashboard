@@ -22,7 +22,7 @@ export default function NodeCopyButton({ nodeId }: { nodeId: string }) {
               setOpen(true);
             }}
           >
-            <Copy className="h-4 w-4 mr-1" /> Tampilkan ID
+            <Copy className="h-4 w-4 mr-1" /> Show ID
           </Button>
         </DialogTrigger>
         <DialogContent>

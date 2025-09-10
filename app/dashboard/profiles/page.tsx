@@ -467,9 +467,8 @@ export default function VpnProfilesPage() {
                     <TableCell>
                       <div className="flex items-center">
                         <span
-                          className={`h-2 w-2 rounded-full mr-2 ${
-                            isNodeOnline ? "bg-green-500" : "bg-red-500"
-                          }`}
+                          className={`h-2 w-2 rounded-full mr-2 ${isNodeOnline ? "bg-green-500" : "bg-red-500"
+                            }`}
                           title={`Node is ${user.node.status}`}
                         ></span>
                         {user.node?.name || "N/A"}
@@ -712,7 +711,7 @@ export default function VpnProfilesPage() {
             <DialogTitle>Confirm Revocation</DialogTitle>
             <DialogDescription>
               {userToRevoke
-                ? `Are you sure you want to revoke the VPN profile for ${userToRevoke.username}?`
+                ? `Are you sure you want to revoke the VPN profile for ${userToRevoke.username}? This action cannot be undone. You can't create a new profile with the same username once revoked.`
                 : ""}
             </DialogDescription>
           </DialogHeader>
