@@ -135,7 +135,7 @@ export default function VpnProfilesPage() {
   useEffect(() => {
     fetchVpnUsers();
     fetchNodesForSelect();
-    const interval = setInterval(fetchVpnUsers, 15000);
+    const interval = setInterval(fetchVpnUsers, 60000);
     return () => clearInterval(interval);
   }, [fetchVpnUsers, fetchNodesForSelect]);
   const filteredValidUsers = useMemo(() => {

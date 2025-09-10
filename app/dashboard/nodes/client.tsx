@@ -86,7 +86,6 @@ export default function NodesClientPage({
     return () => clearInterval(interval);
   }, [fetchNodes]);
 
-
   //pakek snmp di disable dulu
   // useEffect(() => {
   //   const triggerMetricsUpdate = () => {
