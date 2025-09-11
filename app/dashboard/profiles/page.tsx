@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -27,6 +28,8 @@ import {
   Wifi,
   PowerOff,
   XCircle,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import {
   Dialog,
@@ -46,6 +49,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -56,11 +68,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import { VpnUser, VpnCertificateStatus, NodeStatus } from "@prisma/client"; // Import NodeStatus
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Tipe yang diperluas
 interface NodeForSelect {
   id: string;
   name: string;
+  ip: string;
 }
 // PERBAIKAN: Sertakan status node di dalam tipe
 type ExtendedVpnUser = VpnUser & { node: { name: string; status: NodeStatus } };
@@ -77,11 +91,12 @@ export default function VpnProfilesPage() {
   const { data: session } = useSession();
   const [vpnUsers, setVpnUsers] = useState<ExtendedVpnUser[]>([]);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
-  // ... (state lainnya tidak berubah)
+  const searchParams = useSearchParams();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newProfile, setNewProfile] = useState({ username: "", nodeId: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const { toast } = useToast();
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<{
@@ -132,6 +147,14 @@ export default function VpnProfilesPage() {
       });
     }
   }, [toast]);
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create' && session?.user?.role === "ADMIN") {
+      setIsAddModalOpen(true);
+    }
+  }, [searchParams, session]);
+
   useEffect(() => {
     fetchVpnUsers();
     fetchNodesForSelect();
@@ -664,28 +687,58 @@ export default function VpnProfilesPage() {
               <Label htmlFor="node" className="text-right">
                 Node
               </Label>
-              <Select
-                value={newProfile.nodeId}
-                onValueChange={(value) =>
-                  setNewProfile({ ...newProfile, nodeId: value })
-                }
-                disabled={isSubmitting || nodes.length === 0}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={
-                      nodes.length > 0 ? "Select Node" : "No nodes available"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {nodes.map((node) => (
-                    <SelectItem key={node.id} value={node.id}>
-                      {node.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isComboboxOpen}
+                    className="col-span-3 justify-between font-normal" // DIUBAH: Hapus font-bold agar tidak terlalu mencolok
+                  >
+                    {/* DIUBAH: Tampilkan nama dan IP jika sudah terpilih */}
+                    {newProfile.nodeId
+                      ? (() => {
+                          const selectedNode = nodes.find((node) => node.id === newProfile.nodeId);
+                          return selectedNode ? `${selectedNode.name} (${selectedNode.ip})` : "Select Node...";
+                        })()
+                      : nodes.length > 0 ? "Select Node..." : "No nodes available"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search node name or IP..." />
+                    <CommandList> {/* BARU: Bungkus dengan CommandList */}
+                      <CommandEmpty>No node found.</CommandEmpty>
+                      <CommandGroup>
+                        {nodes.map((node) => (
+                          <CommandItem
+                            key={node.id}
+                            // DIUBAH: Value untuk search mencakup nama dan IP
+                            value={`${node.name} ${node.ip}`}
+                            onSelect={() => {
+                              setNewProfile({ ...newProfile, nodeId: node.id });
+                              setIsComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newProfile.nodeId === node.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {/* DIUBAH: Tampilkan nama dan IP di dalam list */}
+                            <div className="flex justify-between w-full items-center">
+                              <span>{node.name}</span>
+                              <span className="text-xs text-muted-foreground">{node.ip}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <DialogFooter>
