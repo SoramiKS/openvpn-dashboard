@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Save, X, Loader2, Copy, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Save, X, Loader2, Copy, XCircle, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -108,9 +108,9 @@ export default function NodesClientPage({
 
   const filteredNodes = useMemo(() => {
     return nodes.filter(node => {
-        const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) || node.ip.includes(searchTerm);
-        const matchesStatus = filterStatus === 'all' || node.status === filterStatus;
-        return matchesSearch && matchesStatus;
+      const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) || node.ip.includes(searchTerm);
+      const matchesStatus = filterStatus === 'all' || node.status === filterStatus;
+      return matchesSearch && matchesStatus;
     });
   }, [nodes, searchTerm, filterStatus]);
 
@@ -175,7 +175,7 @@ export default function NodesClientPage({
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/nodes/${nodeToDelete.id}`, { method: "DELETE" });
-      const responseData = await response.json(); 
+      const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.message || "Failed to delete node.");
       toast({ title: "Success", description: responseData.message });
       await fetchNodes();
@@ -202,30 +202,30 @@ export default function NodesClientPage({
 
       <Card>
         <CardHeader>
-            <CardTitle>Filter Nodes</CardTitle>
+          <CardTitle>Filter Nodes</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row gap-4">
-            <Input 
-                placeholder="Search by name or IP..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-grow"
-            />
-            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as NodeStatus | 'all')}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {Object.values(NodeStatus).map(status => (
-                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Button variant="ghost" onClick={() => { setSearchTerm(''); setFilterStatus('all'); }}>
-                <XCircle className="h-4 w-4 mr-2" />
-                Clear Filters
-            </Button>
+          <Input
+            placeholder="Search by name or IP..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-grow"
+          />
+          <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as NodeStatus | 'all')}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {Object.values(NodeStatus).map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" onClick={() => { setSearchTerm(''); setFilterStatus('all'); }}>
+            <XCircle className="h-4 w-4 mr-2" />
+            Clear Filters
+          </Button>
         </CardContent>
       </Card>
 
@@ -256,35 +256,44 @@ export default function NodesClientPage({
                 ) : (
                   filteredNodes.map((node) => (
                     <TableRow key={node.id}>
-                        <TableCell className="font-medium">{editingNodeId === node.id ? <Input name="name" value={editedNode?.name || ""} onChange={handleEditChange} disabled={isSubmitting} /> : <p>{node.name}</p>}</TableCell>
-                        <TableCell>{editingNodeId === node.id ? <Input name="ip" value={editedNode?.ip || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.ip}</TableCell>
-                        <TableCell>{editingNodeId === node.id ? <Input name="location" value={editedNode?.location || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.location}</TableCell>
-                        <TableCell><Badge variant={node.status === NodeStatus.ONLINE ? "default" : node.status === NodeStatus.OFFLINE ? "destructive" : "secondary"}>{node.status}</Badge></TableCell>
-                        {/* --- PERBAIKAN: Tampilkan data langsung dari 'node' --- */}
-                        <TableCell>
-                            {node.status === NodeStatus.ONLINE ? (
-                                <div className="flex items-center space-x-2">
-                                    <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.cpuUsage > 80 ? "bg-red-500" : node.cpuUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.cpuUsage}%` }}></div></div>
-                                    <span className="text-sm">{node.cpuUsage}%</span>
-                                </div>
-                            ) : <span className="text-gray-400">N/A</span>}
-                        </TableCell>
-                        <TableCell>
-                            {node.status === NodeStatus.ONLINE ? (
-                                <div className="flex items-center space-x-2">
-                                    <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.ramUsage > 80 ? "bg-red-500" : node.ramUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.ramUsage}%` }}></div></div>
-                                    <span className="text-sm">{node.ramUsage}%</span>
-                                </div>
-                            ) : <span className="text-gray-400">N/A</span>}
-                        </TableCell>
-                        <TableCell>{node.lastSeen ? new Date(node.lastSeen).toLocaleString() : "Never"}</TableCell>
-                        <TableCell>
-                            {editingNodeId === node.id ? (
-                                <div className="flex space-x-2"><Button variant="outline" size="sm" onClick={saveEditedNode} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}<span className="ml-1">Save</span></Button><Button variant="outline" size="sm" onClick={cancelEditing} disabled={isSubmitting} type="button"><X className="h-4 w-4" /><span className="ml-1">Cancel</span></Button></div>
-                            ) : (
-                                <div className="flex space-x-2"><Button variant="outline" size="sm" onClick={() => startEditing(node)} disabled={isSubmitting} type="button"><Edit className="h-4 w-4" /><span className="ml-1">Edit</span></Button><Button variant="destructive" size="sm" onClick={() => handleDeleteClick(node)} disabled={isSubmitting}><Trash2 className="h-4 w-4" /><span className="ml-1">Delete</span></Button><NodeCopyButton nodeId={node.id} /></div>
-                            )}
-                        </TableCell>
+                      <TableCell className="font-medium">{editingNodeId === node.id ? <Input name="name" value={editedNode?.name || ""} onChange={handleEditChange} disabled={isSubmitting} /> : <p>{node.name}</p>}</TableCell>
+                      <TableCell>{editingNodeId === node.id ? <Input name="ip" value={editedNode?.ip || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.ip}</TableCell>
+                      <TableCell>{editingNodeId === node.id ? <Input name="location" value={editedNode?.location || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.location}</TableCell>
+                      <TableCell><Badge variant={node.status === NodeStatus.ONLINE ? "default" : node.status === NodeStatus.OFFLINE ? "destructive" : "secondary"}>{node.status}</Badge></TableCell>
+                      {/* --- PERBAIKAN: Tampilkan data langsung dari 'node' --- */}
+                      <TableCell>
+                        {node.status === NodeStatus.ONLINE ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.cpuUsage > 80 ? "bg-red-500" : node.cpuUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.cpuUsage}%` }}></div></div>
+                            <span className="text-sm">{node.cpuUsage}%</span>
+                          </div>
+                        ) : <span className="text-gray-400">N/A</span>}
+                      </TableCell>
+                      <TableCell>
+                        {node.status === NodeStatus.ONLINE ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.ramUsage > 80 ? "bg-red-500" : node.ramUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.ramUsage}%` }}></div></div>
+                            <span className="text-sm">{node.ramUsage}%</span>
+                          </div>
+                        ) : <span className="text-gray-400">N/A</span>}
+                      </TableCell>
+                      <TableCell>{node.lastSeen ? new Date(node.lastSeen).toLocaleString() : "Never"}</TableCell>
+                      <TableCell>
+                        {editingNodeId === node.id ? (
+                          <div className="flex space-x-2"><Button variant="outline" size="sm" onClick={saveEditedNode} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}<span className="ml-1">Save</span></Button><Button variant="outline" size="sm" onClick={cancelEditing} disabled={isSubmitting} type="button"><X className="h-4 w-4" /><span className="ml-1">Cancel</span></Button></div>
+                        ) : (
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => startEditing(node)} disabled={isSubmitting} type="button"><Edit className="h-4 w-4" /><span className="ml-1">Edit</span></Button>
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(node)} disabled={isSubmitting}><Trash2 className="h-4 w-4" /><span className="ml-1">Delete</span></Button>
+                            {/* BARU: Tambahkan tombol ini untuk membuka panduan instalasi */}
+                            <Button variant="secondary" size="sm" onClick={() => setNodeForGuide(node)} type="button">
+                              <FileText className="h-4 w-4" />
+                              <span className="ml-1">Guide</span>
+                            </Button>
+                            <NodeCopyButton nodeId={node.id} />
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
