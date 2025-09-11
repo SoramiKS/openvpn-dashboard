@@ -13,8 +13,8 @@ const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(textToCopy);
     toast({
-        title: "Copied!",
-        description: "Text has been copied to clipboard.",
+      title: "Copied!",
+      description: "Text has been copied to clipboard.",
     });
   };
   return (
@@ -36,7 +36,7 @@ interface NodeInstallationGuideProps {
 export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl, onFinish }: NodeInstallationGuideProps) {
   const [step, setStep] = useState(1);
 
-  const scriptUrl = "https://raw.githubusercontent.com/SoramiKS/ovpn-agent-bash/refs/heads/main/deploymentovpn.sh";
+  const scriptUrl = "https://raw.githubusercontent.com/co2ngadimin/ovpn-agent-bash/refs/heads/main/deploymentovpn.sh?token=GHSAT0AAAAAADKJFGUGRWYSHF5OJ2A3VZ3U2GCTRLA";
   const wgetCommand = `wget ${scriptUrl} -O install.sh`;
   const chmodCommand = "chmod +x install.sh";
   const runCommand = "sudo ./install.sh";
@@ -46,15 +46,15 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
   let port = "3000";
   let isIpAddress = false;
   try {
-      const url = new URL(dashboardUrl);
-      hostname = url.hostname;
-      port = url.port || (url.protocol === "https:" ? "443" : "80");
-      isIpAddress = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
-  } catch(e) {
-      // FIX: Using variable 'e' to remove unused-vars warning
-      console.error("Invalid dashboardUrl provided:", dashboardUrl, e);
+    const url = new URL(dashboardUrl);
+    hostname = url.hostname;
+    port = url.port || (url.protocol === "https:" ? "443" : "80");
+    isIpAddress = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+  } catch (e) {
+    // FIX: Using variable 'e' to remove unused-vars warning
+    console.error("Invalid dashboardUrl provided:", dashboardUrl, e);
   }
-  
+
   return (
     // Using DialogHeader and DialogFooter for consistency
     <>
@@ -63,7 +63,7 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
         <DialogTitle className="text-2xl">Installation Guide for Node &quot;{nodeName}&quot;</DialogTitle>
         <DialogDescription>Step {step} of 2: {step === 1 ? "Preparing Script on Server" : "Filling Configuration"}</DialogDescription>
       </DialogHeader>
-      
+
       <div className="space-y-6 py-4">
         {step === 1 && (
           <div className="space-y-4">
@@ -121,9 +121,9 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
                   </div>
                 </div>
               </div>
-                <div>
+              <div>
                 <p className="text-sm font-medium mb-2">Custom Port:</p>
-                  <div className="pl-4 border-l-2">
+                <div className="pl-4 border-l-2">
                   <p className="text-xs text-muted-foreground mb-1">
                     {port === "443" || port === "80" ? "Choose 'N' (No), since you are using a standard port." : `Choose 'Y' (Yes), then enter the following port:`}
                   </p>
@@ -133,7 +133,7 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
                       <CopyButton textToCopy={port} />
                     </div>
                   )}
-                  </div>
+                </div>
               </div>
               <div className="flex justify-between items-center">
                 <div>
@@ -143,25 +143,25 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
                 <CopyButton textToCopy={serverId} />
               </div>
             </div>
-             <p className="text-sm text-muted-foreground pt-2">Once all inputs are filled in, the script will complete the installation. Your node will soon connect to the dashboard.</p>
+            <p className="text-sm text-muted-foreground pt-2">Once all inputs are filled in, the script will complete the installation. Your node will soon connect to the dashboard.</p>
           </div>
         )}
       </div>
 
       <DialogFooter>
         <div className="flex justify-between w-full">
-            <Button variant="outline" onClick={() => setStep(1)} disabled={step === 1}>
-                Back
+          <Button variant="outline" onClick={() => setStep(1)} disabled={step === 1}>
+            Back
+          </Button>
+          {step === 1 ? (
+            <Button onClick={() => setStep(2)}>
+              Next Step
             </Button>
-            {step === 1 ? (
-                <Button onClick={() => setStep(2)}>
-                    Next Step
-                </Button>
-            ) : (
-                <Button onClick={onFinish}>
-                    Finish
-                </Button>
-            )}
+          ) : (
+            <Button onClick={onFinish}>
+              Finish
+            </Button>
+          )}
         </div>
       </DialogFooter>
     </>
