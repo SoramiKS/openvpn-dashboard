@@ -9,8 +9,9 @@ export default function WsTestPage() {
     useEffect(() => {
         console.log('Mencoba menghubungkan WebSocket...');
         const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const wsUrl = `${wsProtocol}://${window.location.host}`;
+        const wsUrl = `${wsProtocol}://${window.location.host}/api/wss`;
         const ws = new WebSocket(wsUrl);
+
 
         ws.onopen = () => {
             console.log('WSTEST: Koneksi TERBUKA');
