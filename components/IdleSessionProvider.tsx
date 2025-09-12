@@ -8,7 +8,7 @@ import { useSession } from 'next-auth/react';
 
 // Durasi inaktivitas dalam milidetik (1 jam)
 // (60 menit * 60 detik * 1000 milidetik) - 60 detik untuk peringatan
-const IDLE_TIMEOUT_MS = (30 * 60 * 1000) - (60 * 1000); // 59 menit
+const IDLE_TIMEOUT_MS = (60 * 60 * 1000) - (30 * 1000); // 59 menit
 
 export const IdleSessionProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: session, status } = useSession();

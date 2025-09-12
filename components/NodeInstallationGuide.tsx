@@ -96,13 +96,13 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
         {step === 2 && (
           <div className="space-y-2">
             <p>Use the information below to answer the questions that appear in your terminal.</p>
-            <div className="space-y-4 rounded-lg border bg-slate-50 p-4">
+            <div className="space-y-4 rounded-lg border p-4">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium">Application Name for PM2:</p>
-                  <code className="text-sm text-blue-600">vpn-agent</code>
+                  <code className="text-sm text-blue-600">{nodeName}</code>
                 </div>
-                <CopyButton textToCopy="vpn-agent" />
+                <CopyButton textToCopy={nodeName} />
               </div>
               <div className="flex justify-between items-center">
                 <div>

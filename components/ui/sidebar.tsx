@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton"; // 1. Import Skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   LayoutDashboard,
   Server,
@@ -11,16 +11,15 @@ import {
   ScrollText,
   Menu,
   Users,
-  Shield
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useSession } from "next-auth/react"; // 2. Import useSession
-import Image from "next/image"; // 3. Import Image for logo
+import { useSession } from "next-auth/react";
+import Image from "next/image";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton"; // ⬅️ Import tombolnya
 
-// Tipe props tidak berubah
-type SidebarProps = React.HTMLAttributes<HTMLDivElement> ;
+type SidebarProps = React.ComponentProps<"div">;
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
@@ -32,30 +31,29 @@ const navigation = [
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
-  // --- PERBAIKAN DI SINI ---
-  // 3. Ambil data sesi DAN status loading-nya
   const { data: session, status } = useSession();
-  const userRole = session?.user?.role;
+  const userRole = session?.user?.role ?? "USER";
 
-  // 4. Tampilkan placeholder loading jika sesi sedang diperiksa
   if (status === "loading") {
     return (
       <div className={cn("pb-12 space-y-4 py-4 px-3", className)}>
         <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </div>
       </div>
     );
   }
-  // --- AKHIR PERBAIKAN ---
 
   return (
-    <div className={cn("pb-12", className)}>
-      <div className="space-y-4 py-4">
+    <div
+      className={cn(
+        "pb-12 bg-white dark:bg-gray-900 border-r flex flex-col",
+        className
+      )}
+    >
+      <div className="space-y-4 py-4 flex-1">
         <div className="px-3 py-2">
           <div className="flex items-center mb-8 px-2">
             <Image
@@ -63,16 +61,19 @@ export function Sidebar({ className }: SidebarProps) {
               alt="Logo"
               width={32}
               height={32}
-              className="mr-2"/>
+              className="mr-2"
+            />
             <div>
-              <h1 className="text-xl font-bold">OpenVPN</h1>
+              <h1 className="text-xl font-bold ">
+                OpenVPN
+              </h1>
               <p className="text-xs text-muted-foreground">Manager</p>
             </div>
           </div>
           <div className="space-y-1">
             {navigation
-              .filter(item => !item.adminOnly || (item.adminOnly && userRole === 'ADMIN'))
-              .map((item) => (
+              .filter(item => !item.adminOnly || userRole === "ADMIN")
+              .map(item => (
                 <Link key={item.name} href={item.href}>
                   <Button
                     variant={pathname === item.href ? "secondary" : "ghost"}
@@ -85,6 +86,11 @@ export function Sidebar({ className }: SidebarProps) {
               ))}
           </div>
         </div>
+      </div>
+
+      {/* ⬇️ Tambahin tombol theme toggle di bawah */}
+      <div className="p-4 border-t dark:border-gray-800 flex justify-center">
+        <ThemeToggleButton />
       </div>
     </div>
   );
@@ -100,7 +106,7 @@ export function MobileSidebar() {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="p-0">
+      <SheetContent side="left" className="p-0 w-64">
         <Sidebar />
       </SheetContent>
     </Sheet>
