@@ -2,6 +2,8 @@
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
+// tidak perlu import NextRequest di sini
+
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

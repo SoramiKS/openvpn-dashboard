@@ -101,7 +101,8 @@ export default function NodesClientPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { nodesData } = useWS();
-
+  const [sortBy, setSortBy] = useState<keyof Node | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [newNode, setNewNode] = useState<NodeFormInput>({
@@ -128,16 +129,40 @@ export default function NodesClientPage({
     }))
   }, [nodes]);
 
-  const filteredNodesWithFlags = useMemo(() => {
-    return nodesWithFlags.filter((node) => {
+  const filteredAndSortedNodes = useMemo(() => {
+    const filtered = nodesWithFlags.filter((node) => {
       const matchesSearch =
         node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         node.ip.includes(searchTerm);
-      const matchesStatus =
-        filterStatus === "all" || node.status === filterStatus;
+      const matchesStatus = filterStatus === "all" || node.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [nodesWithFlags, searchTerm, filterStatus]);
+
+    if (sortBy) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortBy];
+        const bValue = b[sortBy];
+
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortDirection === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+        }
+
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [nodesWithFlags, searchTerm, filterStatus, sortBy, sortDirection]);
+
 
 
   const fetchNodes = useCallback(async () => {
@@ -358,6 +383,15 @@ export default function NodesClientPage({
     }
   };
 
+  const handleSort = (column: keyof Node) => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortDirection("asc");
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -562,14 +596,14 @@ export default function NodesClientPage({
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>IP Address</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>CPU</TableHead>
-                  <TableHead>RAM</TableHead>
-                  <TableHead>Last Seen</TableHead>
+                <TableRow className="rounded-lg">
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("name")}>Name</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("ip")}>IP Address</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("ip")}>Location</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("status")}>Status</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("cpuUsage")}>CPU</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("ramUsage")}>RAM</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleSort("lastSeen")}>Last Seen</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -581,7 +615,7 @@ export default function NodesClientPage({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredNodesWithFlags.map((node) => (
+                  filteredAndSortedNodes.map((node) => (
                     <TableRow key={node.id}>
                       <TableCell className="font-medium">
                         {editingNodeId === node.id ? (
