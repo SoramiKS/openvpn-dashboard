@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { signOut } from "next-auth/react"; // SessionProvider tidak perlu diimpor lagi
 import { Toaster } from "@/components/ui/toaster";
+import { IdleSessionProvider } from "@/components/IdleSessionProvider";
 
 export default function DashboardLayout({
   children,
@@ -17,19 +18,20 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <IdleSessionProvider> 
+    <div className="flex h-screen">
       <div className="hidden md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 shadow-sm">
+        <div className="flex flex-col flex-grow shadow-sm">
           <Sidebar className="flex-grow" />
         </div>
       </div>
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 shadow-sm">
+        <header className=" shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center">
               <MobileSidebar />
-              <h2 className="text-lg font-semibold text-gray-900 ml-2">
+              <h2 className="text-lg font-semibold ml-2">
                 Dashboard
               </h2>
             </div>
@@ -47,5 +49,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </IdleSessionProvider>
   );
 }

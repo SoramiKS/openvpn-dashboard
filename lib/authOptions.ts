@@ -1,4 +1,3 @@
-// lib/authOptions.ts
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
@@ -14,7 +13,9 @@ const rateLimiter = new RateLimiterMemory({
 export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    // --- PEMBARUAN DI SINI ---
+    // Atur masa berlaku maksimum sesi menjadi 1 jam (dalam detik)
+    maxAge: 60 * 60, // 1 jam
   },
   providers: [
     CredentialsProvider({
@@ -29,10 +30,7 @@ export const authOptions: AuthOptions = {
           throw new Error("Email, password, dan token reCAPTCHA wajib diisi.");
         }
 
-        // --- PERBAIKAN DI SINI ---
-        // Dapatkan IP dari header 'x-forwarded-for' yang diatur oleh Nginx
         const ip = req.headers?.['x-forwarded-for'] || 'unknown';
-        // --- AKHIR PERBAIKAN ---
 
         try {
             await rateLimiter.consume(ip as string);
