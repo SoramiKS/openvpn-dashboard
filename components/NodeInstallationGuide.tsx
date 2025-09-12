@@ -36,7 +36,7 @@ interface NodeInstallationGuideProps {
 export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl, onFinish }: NodeInstallationGuideProps) {
   const [step, setStep] = useState(1);
 
-  const scriptUrl = "https://raw.githubusercontent.com/co2ngadimin/ovpn-agent-bash/refs/heads/main/deploymentovpn.sh?token=GHSAT0AAAAAADKJFGUGRWYSHF5OJ2A3VZ3U2GCTRLA";
+  const scriptUrl = "https://raw.githubusercontent.com/co2ngadimin/ovpn-agent-bash/refs/heads/main/deploymentovpn.sh";
   const wgetCommand = `wget ${scriptUrl} -O install.sh`;
   const chmodCommand = "chmod +x install.sh";
   const runCommand = "sudo ./install.sh";
