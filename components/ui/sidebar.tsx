@@ -17,7 +17,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { ThemeToggleButton } from "@/components/ThemeToggleButton"; // ⬅️ Import tombolnya
 
 type SidebarProps = React.ComponentProps<"div">;
 
@@ -49,7 +48,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "pb-12 bg-white dark:bg-gray-900 border-r flex flex-col",
+        "pb-12 border-r flex flex-col",
         className
       )}
     >
@@ -88,10 +87,7 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
       </div>
 
-      {/* ⬇️ Tambahin tombol theme toggle di bawah */}
-      <div className="p-4 border-t dark:border-gray-800 flex justify-center">
-        <ThemeToggleButton />
-      </div>
+
     </div>
   );
 }

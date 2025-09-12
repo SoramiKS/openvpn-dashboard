@@ -13,6 +13,7 @@ import ReCAPTCHA from "react-google-recaptcha";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 // --- Component for Regular Login Form ---
 const LoginForm = () => {
@@ -121,7 +122,7 @@ const SetupForm = () => {
 
     return (
         <form onSubmit={handleCreateAdmin} className="space-y-5">
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">{error}</div>}
+            {error && <div className="bg-red-500 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">{error}</div>}
             <div className="space-y-2">
                 <Label htmlFor="admin-email">Admin Email</Label>
                 <Input id="admin-email" type="email" placeholder="Enter admin email..." value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -171,16 +172,16 @@ export default function LoginPage() {
     const descriptionText = needsSetup ? "Database is empty. Please create the first admin account." : "Log in to your account to manage your VPN.";
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen flex items-center justify-center ">
             <Card className="w-full max-w-md shadow-lg rounded-lg overflow-hidden">
-                <CardHeader className="space-y-1 text-center p-6 bg-white border-b">
+                <CardHeader className="space-y-1 text-center p-6  border-b">
                     <div className="flex justify-center mb-4 rounded-full">
                         <Image src="/logo.svg" alt="Logo" width={80} height={80} unoptimized className="rounded-full" />
                     </div>
                     <CardTitle className="text-3xl font-extrabold">{titleText}</CardTitle>
                     <CardDescription className="text-gray-600 mt-2">{descriptionText}</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6 bg-white">
+                <CardContent className="p-6 ">
                     {needsSetup === null ? (
                         <div className="flex justify-center items-center h-40">
                             <Loader2 className="h-8 w-8 animate-spin" />
@@ -192,6 +193,9 @@ export default function LoginPage() {
                     )}
                 </CardContent>
             </Card>
+            <div className="absolute top-4 right-4">
+                <ThemeToggleButton />
+            </div>
         </div>
     );
 }
