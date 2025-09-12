@@ -212,9 +212,11 @@ export default function DashboardPage() {
         {/* DIUBAH: Tombol sekarang menjadi Link yang mengarah ke halaman profil dengan query parameter */}
         {session?.user?.role === "ADMIN" && (
           <Link href="/dashboard/profiles?action=create" passHref>
-            <Button>
+            <Button className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
               <Plus className="h-4 w-4 mr-2" />
-              Create Profile
+              <p>
+                Create Profile
+              </p>
             </Button>
           </Link>
         )}
@@ -227,7 +229,7 @@ export default function DashboardPage() {
         <>
           {/* Kartu Statistik Atas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <Card className="hover:shadow-xl transition-shadow">
+            <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
               <Link href="/dashboard/nodes">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -243,7 +245,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Link>
             </Card>
-            <Card className="hover:shadow-xl transition-shadow">
+            <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
               <Link href="/dashboard/users">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -259,60 +261,66 @@ export default function DashboardPage() {
                 </CardContent>
               </Link>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Active Sessions
-                </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeSessions}</div>
-                <p className="text-xs text-muted-foreground">
-                  Currently connected
-                </p>
-              </CardContent>
+            <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
+              <Link href="/dashboard/users">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Active Sessions
+                  </CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.activeSessions}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Currently connected
+                  </p>
+                </CardContent>
+              </Link>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Traffic (24h)
-                </CardTitle>
-                <ArrowUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-bold flex items-center">
-                  <ArrowUp className="h-4 w-4 mr-2 text-gray-500" />
-                  {formatBytes(trafficStats.totalSent)}
-                </div>
-                <div className="text-lg font-bold flex items-center">
-                  <ArrowDown className="h-4 w-4 mr-2 text-gray-500" />
-                  {formatBytes(trafficStats.totalReceived)}
-                </div>
-              </CardContent>
+            <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
+              <Link href="/dashboard/logs">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Traffic (24h)
+                  </CardTitle>
+                  <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold flex items-center">
+                    <ArrowUp className="h-4 w-4 mr-2 text-gray-500" />
+                    {formatBytes(trafficStats.totalSent)}
+                  </div>
+                  <div className="text-lg font-bold flex items-center">
+                    <ArrowDown className="h-4 w-4 mr-2 text-gray-500" />
+                    {formatBytes(trafficStats.totalReceived)}
+                  </div>
+                </CardContent>
+              </Link>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  System Status
-                </CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${systemStatusInfo.color}`}>
-                  {systemStatusInfo.status}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {systemStatusInfo.description}
-                </p>
-              </CardContent>
+            <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
+              <Link href="/dashboard/nodes">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    System Status
+                  </CardTitle>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${systemStatusInfo.color}`}>
+                    {systemStatusInfo.status}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {systemStatusInfo.description}
+                  </p>
+                </CardContent>
+              </Link>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Node Status dengan Donut Chart */}
-              <Card className="hover:shadow-xl transition-shadow">
+              <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
                 <Link href="/dashboard/nodes">
                   <CardHeader>
                     <CardTitle>Node Status</CardTitle>
@@ -328,7 +336,6 @@ export default function DashboardPage() {
                             cx="50%"
                             cy="50%"
                             outerRadius={80}
-                            label
                           >
                             {stats.statusChartData.map((entry, index) => (
                               <Cell
@@ -364,83 +371,85 @@ export default function DashboardPage() {
                 </Link>
               </Card>
               {/* Resource Usage dengan Rata-rata & Top 3 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Average Resource Usage (Online Nodes)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1 text-sm font-medium">
-                        <span className="flex items-center">
-                          <Cpu className="h-4 w-4 mr-2" /> Average CPU
-                        </span>
-                        <span>{stats.avgCpu}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`${getProgressBarColor(
-                            stats.avgCpu
-                          )} h-2.5 rounded-full`}
-                          style={{ width: `${stats.avgCpu}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1 text-sm font-medium">
-                        <span className="flex items-center">
-                          <MemoryStick className="h-4 w-4 mr-2" /> Average RAM
-                        </span>
-                        <span>{stats.avgRam}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`${getProgressBarColor(
-                            stats.avgRam
-                          )} h-2.5 rounded-full`}
-                          style={{ width: `${stats.avgRam}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
+                <Link href="/dashboard/nodes">
+                  <CardHeader>
+                    <CardTitle>Average Resource Usage (Online Nodes)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
                       <div>
-                        <h4 className="text-sm font-semibold mb-2">
-                          Top 3 Utilized (CPU)
-                        </h4>
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          {stats.topCpuNodes.map((node) => (
-                            <div key={node.id} className="flex justify-between">
-                              <span>{node.name}</span>
-                              <span className="font-mono">
-                                {node.cpuUsage}%
-                              </span>
-                            </div>
-                          ))}
+                        <div className="flex items-center justify-between mb-1 text-sm font-medium">
+                          <span className="flex items-center">
+                            <Cpu className="h-4 w-4 mr-2" /> Average CPU
+                          </span>
+                          <span>{stats.avgCpu}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className={`${getProgressBarColor(
+                              stats.avgCpu
+                            )} h-2.5 rounded-full`}
+                            style={{ width: `${stats.avgCpu}%` }}
+                          ></div>
                         </div>
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold mb-2">
-                          Top 3 Utilized (RAM)
-                        </h4>
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          {stats.topRamNodes.map((node) => (
-                            <div key={node.id} className="flex justify-between">
-                              <span>{node.name}</span>
-                              <span className="font-mono">
-                                {node.ramUsage}%
-                              </span>
-                            </div>
-                          ))}
+                        <div className="flex items-center justify-between mb-1 text-sm font-medium">
+                          <span className="flex items-center">
+                            <MemoryStick className="h-4 w-4 mr-2" /> Average RAM
+                          </span>
+                          <span>{stats.avgRam}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className={`${getProgressBarColor(
+                              stats.avgRam
+                            )} h-2.5 rounded-full`}
+                            style={{ width: `${stats.avgRam}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">
+                            Top 3 Utilized (CPU)
+                          </h4>
+                          <div className="space-y-2 text-xs text-muted-foreground">
+                            {stats.topCpuNodes.map((node) => (
+                              <div key={node.id} className="flex justify-between">
+                                <span>{node.name}</span>
+                                <span className="font-mono">
+                                  {node.cpuUsage}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">
+                            Top 3 Utilized (RAM)
+                          </h4>
+                          <div className="space-y-2 text-xs text-muted-foreground">
+                            {stats.topRamNodes.map((node) => (
+                              <div key={node.id} className="flex justify-between">
+                                <span>{node.name}</span>
+                                <span className="font-mono">
+                                  {node.ramUsage}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
+                </Link>
               </Card>
             </div>
 
             {/* Aktivitas Terbaru */}
-            <Card className="lg:col-span-1 hover:shadow-xl transition-shadow">
+            <Card className="lg:col-span-1 hover:shadow-xl hover:scale-105 duration-200 transition-transform">
               <Link href="/dashboard/logs">
                 <CardHeader>
                   <CardTitle>Recent Activities</CardTitle>

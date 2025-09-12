@@ -288,6 +288,7 @@ export default function LogsPage() {
           <p className="text-gray-600">Monitor system events and activities</p>
         </div>
         <Button
+          className="hover:shadow-xl hover:scale-105 duration-200 transition-transform"
           variant="outline"
           onClick={() => {
             fetchActionLogs(actionLogPage);

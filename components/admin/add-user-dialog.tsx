@@ -92,7 +92,7 @@ export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
           <Plus className="h-4 w-4 mr-2" />
           Add User
         </Button>

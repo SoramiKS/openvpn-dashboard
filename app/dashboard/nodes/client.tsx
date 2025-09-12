@@ -59,6 +59,17 @@ import {
   Tooltip,
 } from "recharts";
 import { useWS } from "@/components/WebSocketProvider";
+import countryEmoji from "country-emoji";
+
+const getFlagFromLocation = (location: string | null) => {
+  if (!location) return "🏳️";
+  const parts = location.split(",").map((p) => p.trim());
+  const countryName = parts[parts.length - 1];
+  if (!countryName) return "🏳️";
+  const flag = countryEmoji.flag(countryName);
+  return flag || "🏳️";
+};
+
 
 // --- TAMBAHAN BARU: Warna untuk Pie Chart ---
 const COLORS: { [key in NodeStatus]?: string } = {
@@ -109,6 +120,25 @@ export default function NodesClientPage({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<NodeStatus | "all">("all");
+
+  const nodesWithFlags = useMemo(() => {
+    return nodes.map(node => ({
+      ...node,
+      flag: getFlagFromLocation(node.location)
+    }))
+  }, [nodes]);
+
+  const filteredNodesWithFlags = useMemo(() => {
+    return nodesWithFlags.filter((node) => {
+      const matchesSearch =
+        node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.ip.includes(searchTerm);
+      const matchesStatus =
+        filterStatus === "all" || node.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [nodesWithFlags, searchTerm, filterStatus]);
+
 
   const fetchNodes = useCallback(async () => {
     if (nodes.length === 0) setIsLoading(true);
@@ -347,6 +377,7 @@ export default function NodesClientPage({
             });
             setIsAddModalOpen(true);
           }}
+          className="hover:shadow-xl hover:scale-105 duration-200 transition-transform"
         >
           <Plus className="h-4 w-4 mr-2" /> Add Node
         </Button>
@@ -354,7 +385,7 @@ export default function NodesClientPage({
 
       {/* --- TAMBAHAN BARU: Grid untuk Statistik Cards --- */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-lg transition-shadow duration-300">
+        <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Node Status</CardTitle>
             <Server className="h-4 w-4 text-muted-foreground" />
@@ -376,10 +407,6 @@ export default function NodesClientPage({
                         cx="50%"
                         cy="50%"
                         outerRadius={40}
-                        labelLine={false}
-                        label={({ name, percent }) =>
-                          `${name} ${(percent * 100).toFixed(0)}%`
-                        }
                       >
                         {nodeStats.statusChartData.map((entry, index) => (
                           <Cell
@@ -429,7 +456,7 @@ export default function NodesClientPage({
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-300">
+        <Card className="lg:col-span-2 hover:shadow-xl hover:scale-105 duration-200 transition-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Average Resource Usage (Online Nodes)
@@ -452,7 +479,7 @@ export default function NodesClientPage({
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
-                      className="bg-blue h-2.5 rounded-full transition-all duration-500"
+                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${nodeStats.avgCpu}%` }}
                     ></div>
                   </div>
@@ -466,7 +493,7 @@ export default function NodesClientPage({
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
-                      className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${nodeStats.avgRam}%` }}
                     ></div>
                   </div>
@@ -554,7 +581,7 @@ export default function NodesClientPage({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredNodes.map((node) => (
+                  filteredNodesWithFlags.map((node) => (
                     <TableRow key={node.id}>
                       <TableCell className="font-medium">
                         {editingNodeId === node.id ? (
@@ -589,9 +616,12 @@ export default function NodesClientPage({
                             disabled={isSubmitting}
                           />
                         ) : (
-                          node.location
+                          <>
+                            {node.flag} {node.location}
+                          </>
                         )}
                       </TableCell>
+
                       <TableCell>
                         <Badge
                           variant={

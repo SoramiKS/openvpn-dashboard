@@ -624,6 +624,7 @@ export default function VpnProfilesPage() {
         </div>
         {session?.user?.role === "ADMIN" && (
           <Button
+            className="hover:shadow-xl hover:scale-105 duration-200 transition-transform"
             onClick={() => setIsAddModalOpen(true)}
             disabled={isSubmitting}
           >

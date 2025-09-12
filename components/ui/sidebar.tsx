@@ -35,10 +35,10 @@ export function Sidebar({ className }: SidebarProps) {
 
   if (status === "loading") {
     return (
-      <div className={cn("pb-12 space-y-4 py-4 px-3", className)}>
+      <div className={cn("space-y-4 py-4 px-3", className)}>
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            <Skeleton key={i} className="py-10 h-10 w-full" />
           ))}
         </div>
       </div>
@@ -48,7 +48,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "pb-12 border-r flex flex-col",
+        "pb-4 border-r flex flex-col",
         className
       )}
     >
@@ -60,7 +60,7 @@ export function Sidebar({ className }: SidebarProps) {
               alt="Logo"
               width={32}
               height={32}
-              className="mr-2"
+              className="mr-2 rounded-full"
             />
             <div>
               <h1 className="text-xl font-bold ">
@@ -87,6 +87,11 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
       </div>
 
+      {session?.user?.email && (
+        <div className="px-3 py-2 mt-auto border-t text-xs text-muted-foreground">
+          Logged in as: {session.user.email}
+        </div>
+      )}
 
     </div>
   );
