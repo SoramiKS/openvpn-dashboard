@@ -3,7 +3,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { NodeStatus, Prisma } from "@prisma/client";
-import { WebSocket } from "ws"; // <-- Impor WebSocket
 
 export async function POST(request: NextRequest) {
     try {

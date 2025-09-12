@@ -13,6 +13,8 @@ interface ActivityLogPayload {
   bytesSent: number | null;
 }
 
+
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -64,6 +66,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (global._webSocketServer) {
+      const message = JSON.stringify({
+        type: "VPN_ACTIVITY_LOGS_UPDATE",
+        payload: logsToCreate,
+      });
+      global._webSocketServer.clients.forEach(client => {
+        if (client.readyState === 1) client.send(message);
+      });
+    }
+
+
     console.log(`Successfully processed ${logsToCreate.length} activity logs for node ${node.name}.`);
     return NextResponse.json({ message: 'Activity logs processed successfully' }, { status: 200 });
 
@@ -72,4 +85,5 @@ export async function POST(req: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json({ message: 'Internal server error', error: errorMessage }, { status: 500 });
   }
+
 }

@@ -102,55 +102,9 @@ export default function DashboardPage() {
 
   // --- BAGIAN BARU: LOGIKA WEBSOCKET ---
   useEffect(() => {
-    // 1. Panggil data awal sekali saja saat komponen dimuat
     fetchInitialDashboardData();
+  }, [fetchInitialDashboardData]);
 
-    // 2. Tentukan URL WebSocket (wss untuk produksi, ws untuk development)
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${wsProtocol}://${window.location.host}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log("✅ Koneksi WebSocket ke dashboard server berhasil dibuat.");
-    };
-
-    // 3. Logika utama: Apa yang harus dilakukan saat ada pesan masuk
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-
-      // Cek tipe pesan yang masuk
-      if (message.type === "NODE_STATUS_UPDATE") {
-        const updatedNode = message.payload;
-
-        // Perbarui state 'nodesData' secara cerdas
-        setNodesData((prevNodes) =>
-          prevNodes.map((node) =>
-            node.id === updatedNode.id
-              ? {
-                ...node,
-                status: updatedNode.status,
-                lastSeen: updatedNode.lastSeen,
-              }
-              : node
-          )
-        );
-      }
-      // Anda bisa menambahkan handler untuk tipe pesan lain di sini, misal 'METRICS_UPDATE'
-    };
-
-    ws.onclose = () => {
-      console.log("🔌 Koneksi WebSocket terputus.");
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket Error:", error);
-    };
-
-    // 4. Membersihkan koneksi saat komponen tidak lagi ditampilkan
-    return () => {
-      ws.close();
-    };
-  }, [fetchInitialDashboardData]); // <-- Dependency hanya pada fungsi fetch awal
 
   // --- TIDAK ADA PERUBAHAN DARI SINI KE BAWAH ---
   // Semua logika useMemo, getSystemStatus, dan JSX tetap sama persis

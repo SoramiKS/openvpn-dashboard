@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react"; // SessionProvider tidak perlu diimpo
 import { Toaster } from "@/components/ui/toaster";
 import { IdleSessionProvider } from "@/components/IdleSessionProvider";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { WebSocketProvider } from "@/components/WebSocketProvider";
 
 
 export default function DashboardLayout({
@@ -46,7 +47,9 @@ export default function DashboardLayout({
 
           {/* Cukup render children tanpa provider di sini */}
           <main className="flex-1 overflow-y-auto p-6">
-            {children}
+            <WebSocketProvider>
+              {children}
+            </WebSocketProvider>
             <Toaster />
           </main>
         </div>

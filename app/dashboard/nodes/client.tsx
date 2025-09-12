@@ -24,12 +24,10 @@ import {
   Save,
   X,
   Loader2,
-  Copy,
   XCircle,
   FileText,
   Server,
   Cpu,
-  MemoryStick,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,7 +58,7 @@ import {
   Cell,
   Tooltip,
 } from "recharts";
-import Link from "next/link";
+import { useWS } from "@/components/WebSocketProvider";
 
 // --- TAMBAHAN BARU: Warna untuk Pie Chart ---
 const COLORS: { [key in NodeStatus]?: string } = {
@@ -91,6 +89,7 @@ export default function NodesClientPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { nodesData } = useWS();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
@@ -135,6 +134,14 @@ export default function NodesClientPage({
     const interval = setInterval(fetchNodes, 15000);
     return () => clearInterval(interval);
   }, [fetchNodes]);
+
+  useEffect(() => {
+    if (nodesData.length) {
+      setNodes(nodesData); // keep local state in sync with WS
+      setIsLoading(false);
+    }
+  }, [nodesData]);
+
 
   useEffect(() => {
     if (nodeForGuide) setIsGuideModalOpen(true);
@@ -412,9 +419,9 @@ export default function NodesClientPage({
                       <span className="font-medium">{entry.value}</span>
                     </div>
                   ))}
-                   <div className="border-t pt-2 mt-2 flex items-center justify-between text-sm font-bold">
-                      <span>Total Nodes</span>
-                      <span>{nodeStats.totalNodes}</span>
+                  <div className="border-t pt-2 mt-2 flex items-center justify-between text-sm font-bold">
+                    <span>Total Nodes</span>
+                    <span>{nodeStats.totalNodes}</span>
                   </div>
                 </div>
               </div>
@@ -431,45 +438,45 @@ export default function NodesClientPage({
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             {isLoading ? (
-               <div className="flex justify-center items-center h-40">
-               <Loader2 className="h-8 w-8 animate-spin" />
-             </div>
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
             ) : (
-                <>
+              <>
                 <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">CPU Usage</span>
-                <span className="text-sm text-muted-foreground">
-                  {nodeStats.avgCpu.toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2.5">
-                <div
-                  className="bg-primary h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${nodeStats.avgCpu}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">RAM Usage</span>
-                <span className="text-sm text-muted-foreground">
-                  {nodeStats.avgRam.toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2.5">
-                <div
-                  className="bg-primary h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${nodeStats.avgRam}%` }}
-                ></div>
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground pt-2 border-t">
-                Based on {nodeStats.onlineNodes} online nodes from a total of {nodeStats.totalNodes}.
-            </div>
-                </>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">CPU Usage</span>
+                    <span className="text-sm text-muted-foreground">
+                      {nodeStats.avgCpu.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div
+                      className="bg-blue h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${nodeStats.avgCpu}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">RAM Usage</span>
+                    <span className="text-sm text-muted-foreground">
+                      {nodeStats.avgRam.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div
+                      className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${nodeStats.avgRam}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  Based on {nodeStats.onlineNodes} online nodes from a total of {nodeStats.totalNodes}.
+                </div>
+              </>
             )}
-            
+
           </CardContent>
         </Card>
       </div>
@@ -591,8 +598,8 @@ export default function NodesClientPage({
                             node.status === NodeStatus.ONLINE
                               ? "default"
                               : node.status === NodeStatus.OFFLINE
-                              ? "destructive"
-                              : "secondary"
+                                ? "destructive"
+                                : "secondary"
                           }
                         >
                           {node.status}
@@ -603,13 +610,12 @@ export default function NodesClientPage({
                           <div className="flex items-center space-x-2">
                             <div className="w-16 bg-gray-200 rounded-full h-2">
                               <div
-                                className={`h-2 rounded-full ${
-                                  node.cpuUsage > 80
-                                    ? "bg-red-500"
-                                    : node.cpuUsage > 60
+                                className={`h-2 rounded-full ${node.cpuUsage > 80
+                                  ? "bg-red-500"
+                                  : node.cpuUsage > 60
                                     ? "bg-yellow-500"
                                     : "bg-green-500"
-                                }`}
+                                  }`}
                                 style={{ width: `${node.cpuUsage}%` }}
                               ></div>
                             </div>
@@ -624,13 +630,12 @@ export default function NodesClientPage({
                           <div className="flex items-center space-x-2">
                             <div className="w-16 bg-gray-200 rounded-full h-2">
                               <div
-                                className={`h-2 rounded-full ${
-                                  node.ramUsage > 80
-                                    ? "bg-red-500"
-                                    : node.ramUsage > 60
+                                className={`h-2 rounded-full ${node.ramUsage > 80
+                                  ? "bg-red-500"
+                                  : node.ramUsage > 60
                                     ? "bg-yellow-500"
                                     : "bg-green-500"
-                                }`}
+                                  }`}
                                 style={{ width: `${node.ramUsage}%` }}
                               ></div>
                             </div>
