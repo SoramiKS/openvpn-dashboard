@@ -319,7 +319,7 @@ export default function LogsPage() {
                 <SelectValue placeholder="Filter by Node" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Nodes</SelectItem>
+                <SelectItem className="truncate" value="all">All Nodes</SelectItem>
                 {nodes.map((node) => (
                   <SelectItem key={node.id} value={node.id}>
                     {node.name}
@@ -503,7 +503,7 @@ export default function LogsPage() {
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
-                  className="w-full justify-start text-left font-normal lg:col-span-1"
+                  className="w-full justify-start text-left font-normal truncate lg:col-span-1"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {vpnActivityLogFilter.startDate ? (
@@ -531,7 +531,7 @@ export default function LogsPage() {
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
-                  className="w-full justify-start text-left font-normal lg:col-span-1"
+                  className="w-full justify-start text-left font-normal truncate lg:col-span-1"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {vpnActivityLogFilter.endDate ? (

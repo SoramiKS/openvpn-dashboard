@@ -694,28 +694,43 @@ export default function VpnProfilesPage() {
                     variant="outline"
                     role="combobox"
                     aria-expanded={isComboboxOpen}
-                    className="col-span-3 justify-between font-normal" // DIUBAH: Hapus font-bold agar tidak terlalu mencolok
+                    className="col-span-3 justify-between font-normal"
                   >
-                    {/* DIUBAH: Tampilkan nama dan IP jika sudah terpilih */}
-                    {newProfile.nodeId
-                      ? (() => {
-                        const selectedNode = nodes.find((node) => node.id === newProfile.nodeId);
-                        return selectedNode ? `${selectedNode.name} (${selectedNode.ip})` : "Select Node...";
+                    {newProfile.nodeId ? (
+                      (() => {
+                        const selectedNode = nodes.find(
+                          (node) => node.id === newProfile.nodeId
+                        );
+                        return selectedNode ? (
+                          <div className="flex justify-between w-full items-center">
+                            <span className="truncate max-w-[150px]">
+                              {selectedNode.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {selectedNode.ip}
+                            </span>
+                          </div>
+                        ) : (
+                          "Select Node..."
+                        );
                       })()
-                      : nodes.length > 0 ? "Select Node..." : "No nodes available"}
+                    ) : nodes.length > 0 ? (
+                      "Select Node..."
+                    ) : (
+                      "No nodes available"
+                    )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0">
                   <Command>
                     <CommandInput placeholder="Search node name or IP..." />
-                    <CommandList> {/* BARU: Bungkus dengan CommandList */}
+                    <CommandList>
                       <CommandEmpty>No node found.</CommandEmpty>
                       <CommandGroup>
                         {nodes.map((node) => (
                           <CommandItem
                             key={node.id}
-                            // DIUBAH: Value untuk search mencakup nama dan IP
                             value={`${node.name} ${node.ip}`}
                             onSelect={() => {
                               setNewProfile({ ...newProfile, nodeId: node.id });
@@ -725,13 +740,18 @@ export default function VpnProfilesPage() {
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                newProfile.nodeId === node.id ? "opacity-100" : "opacity-0"
+                                newProfile.nodeId === node.id
+                                  ? "opacity-100"
+                                  : "opacity-0"
                               )}
                             />
-                            {/* DIUBAH: Tampilkan nama dan IP di dalam list */}
                             <div className="flex justify-between w-full items-center">
-                              <span>{node.name}</span>
-                              <span className="text-xs text-muted-foreground">{node.ip}</span>
+                              <span className="truncate max-w-[150px]">
+                                {node.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {node.ip}
+                              </span>
                             </div>
                           </CommandItem>
                         ))}
@@ -759,6 +779,7 @@ export default function VpnProfilesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog open={isRevokeModalOpen} onOpenChange={setIsRevokeModalOpen}>
         <DialogContent>
           <DialogHeader>
