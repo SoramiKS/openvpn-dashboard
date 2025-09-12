@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
         const agentApiKey = process.env.AGENT_API_KEY;
 
         if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== agentApiKey) {
-          return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
         const body = await request.json();
         const { serverId, serviceStatus, activeUsers = [], cpuUsage, ramUsage } = body;
@@ -64,18 +64,22 @@ export async function POST(request: NextRequest) {
             }
         }); // --- BAGIAN BARU: MENYIARKAN PEMBARUAN --- // Cek apakah server WebSocket kita sudah berjalan
 
+        // --- BAGIAN BARU: MENYIARKAN PEMBARUAN ---
         if (global._webSocketServer) {
             const message = JSON.stringify({
                 type: "NODE_STATUS_UPDATE",
                 payload: updatePayload,
-            }); // Kirim pesan ke semua klien yang terhubung
+            });
 
-            global._webSocketServer.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
+            global._webSocketServer.clients.forEach((client: any) => {
+                if (client.readyState === 1) { // 1 = OPEN
                     client.send(message);
                 }
             });
-        } // --- AKHIR BAGIAN BARU ---
+        }
+        // --- AKHIR BAGIAN BARU ---
+
+        // Logging untuk debugging
         console.log(
             `Node ${serverId} status report processed, with ${activeUsers.length} active user(s).`
         );
