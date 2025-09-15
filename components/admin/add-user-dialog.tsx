@@ -27,7 +27,7 @@ import { useSession } from "next-auth/react"; // Adjust based on your auth libra
 import { Role } from "@prisma/client";
 
 // This component accepts the 'onUserAdded' prop to refresh data on the main page
-export function AddUserDialog({ onUserAdded }: { onUserAdded: () => void }) {
+export function AddUserDialog({ onUserAdded }: Readonly<{ onUserAdded: () => void }>) {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");

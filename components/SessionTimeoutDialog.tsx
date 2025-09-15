@@ -1,72 +1,71 @@
+// components/SessionTimeoutDialog.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { signOut } from 'next-auth/react';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { Button } from './ui/button';
 
 interface SessionTimeoutDialogProps {
-  isOpen: boolean;
-  onStay: () => void;
+    isOpen: boolean;
+    onStay: () => void;
 }
 
+const COUNTDOWN_SECONDS = 30; // Waktu peringatan sebelum logout otomatis
+
 export const SessionTimeoutDialog = ({ isOpen, onStay }: SessionTimeoutDialogProps) => {
-  const [countdown, setCountdown] = useState(60); // Peringatan selama 60 detik
+    const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
 
-  useEffect(() => {
-    if (isOpen) {
-      setCountdown(60); // Reset countdown setiap kali dialog terbuka
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            signOut({ callbackUrl: '/login' }); // Logout otomatis jika countdown habis
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    useEffect(() => {
+        if (!isOpen) {
+            setCountdown(COUNTDOWN_SECONDS); // Reset countdown saat dialog ditutup
+            return;
+        }
 
-      return () => clearInterval(interval);
-    }
-  }, [isOpen]);
+        // Logout jika countdown habis
+        if (countdown === 0) {
+            signOut({ callbackUrl: '/login?error=Session%20timed%20out' });
+            return;
+        }
 
-  const handleStay = () => {
-    setCountdown(60);
-    onStay();
-  };
-  
-  const handleLogout = () => {
-    signOut({ callbackUrl: '/login' });
-  };
+        // Kurangi countdown setiap detik
+        const timerId = setInterval(() => {
+            setCountdown((prev) => prev - 1);
+        }, 1000);
 
-  return (
-    <Dialog open={isOpen}>
-      <DialogContent onInteractOutside={(e) => e.preventDefault()} className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Sesi Anda Akan Segera Berakhir</DialogTitle>
-          <DialogDescription>
-            Karena tidak ada aktivitas, Anda akan otomatis keluar dalam{' '}
-            <span className="font-bold text-destructive">{countdown}</span> detik.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleLogout}>
-            Keluar Sekarang
-          </Button>
-          <Button onClick={handleStay}>
-            Tetap Masuk
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+        return () => clearInterval(timerId); // Cleanup timer
+
+    }, [isOpen, countdown]);
+
+    return (
+        <AlertDialog open={isOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Sesi Anda Akan Segera Berakhir</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Anda tidak melakukan aktivitas apa pun untuk beberapa saat. Untuk alasan keamanan, sesi Anda akan berakhir secara otomatis.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="text-center text-5xl font-mono my-4">
+                    {countdown}
+                </div>
+                <AlertDialogFooter>
+                    <Button variant="outline" onClick={() => signOut({ callbackUrl: '/login' })}>
+                        Logout
+                    </Button>
+                    <AlertDialogAction onClick={onStay}>
+                        Tetap Masuk
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 };
-

@@ -13,7 +13,7 @@ import {
   MemoryStick,
   ArrowDown,
   ArrowUp,
-  Plus
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -26,19 +26,22 @@ import {
   VpnActivityLog,
 } from "@prisma/client";
 import Link from "next/link";
-import { Button } from "@/components/ui/button"; // BARU: Impor Button
-import { useSession } from "next-auth/react"; // BARU: Impor useSession untuk memeriksa role
+import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import { useWS } from "@/components/WebSocketProvider"; // BARU: Impor hook WebSocket
 
-// Tipe data yang diperluas
+// Tipe data tidak berubah
 interface NodeWithMetrics extends Node {
   cpuUsage: number;
   ramUsage: number;
 }
 type RecentLog =
-  | (ActionLog & { node: { name: string } })
+  | (ActionLog & {
+      node: { name: string } | null;
+      nodeNameSnapshot?: string | null;
+    })
   | (VpnActivityLog & { node: { name: string } });
 
-// Fungsi format byte (tetap sama)
 const formatBytes = (
   bytes: number | string | bigint | null | undefined,
   decimals = 2
@@ -66,47 +69,74 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fungsi fetch data awal tetap diperlukan untuk memuat data saat pertama kali halaman dibuka
-  const fetchInitialDashboardData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [nodesRes, usersRes, recentLogsRes, trafficRes] = await Promise.all(
-        [
-          fetch("/api/nodes"),
-          fetch("/api/profiles"),
-          fetch("/api/logs/recent"),
-          fetch("/api/stats/traffic"),
-        ]
-      );
+  // BARU: Ambil data node dari WebSocket
+  const { nodesData: wsNodesData, isConnected } = useWS();
 
-      if (!nodesRes.ok || !usersRes.ok || !recentLogsRes.ok || !trafficRes.ok) {
-        throw new Error("Gagal mengambil sebagian data dashboard.");
+  const fetchData = useCallback(
+    async (isInitialLoad = false) => {
+      if (isInitialLoad) setIsLoading(true);
+      try {
+        const [nodesRes, usersRes, recentLogsRes, trafficRes] =
+          await Promise.all([
+            fetch("/api/nodes"),
+            fetch("/api/profiles"), // Panggilan ini sudah benar
+            fetch("/api/logs/recent"),
+            fetch("/api/stats/traffic"),
+          ]);
+
+        if (
+          !nodesRes.ok ||
+          !usersRes.ok ||
+          !recentLogsRes.ok ||
+          !trafficRes.ok
+        ) {
+          throw new Error("Gagal mengambil sebagian data dashboard.");
+        }
+
+        const usersJson = await usersRes.json(); // Ambil JSON-nya dulu
+
+        setNodesData(await nodesRes.json());
+        // --- PERBAIKAN DI SINI ---
+        // Ambil hanya properti 'data' dari respons
+        setVpnUsersData(usersJson.data);
+        setRecentLogs(await recentLogsRes.json());
+        setTrafficStats(await trafficRes.json());
+      } catch (error) {
+        if (error instanceof Error)
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+      } finally {
+        if (isInitialLoad) setIsLoading(false);
       }
+    },
+    [toast]
+  );
 
-      setNodesData(await nodesRes.json());
-      setVpnUsersData(await usersRes.json());
-      setRecentLogs(await recentLogsRes.json());
-      setTrafficStats(await trafficRes.json());
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  // --- BAGIAN BARU: LOGIKA WEBSOCKET ---
+  // Efek untuk mengambil data awal dan mengatur polling
   useEffect(() => {
-    fetchInitialDashboardData();
-  }, [fetchInitialDashboardData]);
+    fetchData(true); // Ambil semua data saat pertama kali
 
+    // Atur interval untuk me-refresh data non-realtime (selain node)
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 30000); // setiap 30 detik
 
-  // --- TIDAK ADA PERUBAHAN DARI SINI KE BAWAH ---
+    return () => clearInterval(interval); // Cleanup saat komponen unmount
+  }, [fetchData]);
+
+  // BARU: Efek untuk menyinkronkan data node dari WebSocket ke state lokal
+  useEffect(() => {
+    // Cek jika wsNodesData punya data untuk menghindari state kosong saat awal koneksi
+    if (isConnected && wsNodesData.length > 0) {
+      // Hentikan loader jika data dari WS sudah masuk
+      if (isLoading) setIsLoading(false);
+      setNodesData(wsNodesData as NodeWithMetrics[]);
+    }
+  }, [wsNodesData, isConnected, isLoading]);
+
   // Semua logika useMemo, getSystemStatus, dan JSX tetap sama persis
   const stats = useMemo(() => {
     const onlineNodes = nodesData.filter((n) => n.status === NodeStatus.ONLINE);
@@ -121,12 +151,12 @@ export default function DashboardPage() {
     const avgCpu =
       onlineNodes.length > 0
         ? onlineNodes.reduce((sum, node) => sum + node.cpuUsage, 0) /
-        onlineNodes.length
+          onlineNodes.length
         : 0;
     const avgRam =
       onlineNodes.length > 0
         ? onlineNodes.reduce((sum, node) => sum + node.ramUsage, 0) /
-        onlineNodes.length
+          onlineNodes.length
         : 0;
     const topCpuNodes = [...onlineNodes]
       .sort((a, b) => b.cpuUsage - a.cpuUsage)
@@ -214,9 +244,7 @@ export default function DashboardPage() {
           <Link href="/dashboard/profiles?action=create" passHref>
             <Button className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
               <Plus className="h-4 w-4 mr-2" />
-              <p>
-                Create Profile
-              </p>
+              <p>Create Profile</p>
             </Button>
           </Link>
         )}
@@ -246,10 +274,10 @@ export default function DashboardPage() {
               </Link>
             </Card>
             <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
-              <Link href="/dashboard/users">
+              <Link href="/dashboard/profiles">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Users
+                    Total Profiles
                   </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -270,7 +298,9 @@ export default function DashboardPage() {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.activeSessions}</div>
+                  <div className="text-2xl font-bold">
+                    {stats.activeSessions}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Currently connected
                   </p>
@@ -306,7 +336,9 @@ export default function DashboardPage() {
                   <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${systemStatusInfo.color}`}>
+                  <div
+                    className={`text-2xl font-bold ${systemStatusInfo.color}`}
+                  >
                     {systemStatusInfo.status}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -337,9 +369,9 @@ export default function DashboardPage() {
                             cy="50%"
                             outerRadius={80}
                           >
-                            {stats.statusChartData.map((entry, index) => (
+                            {stats.statusChartData.map((entry) => (
                               <Cell
-                                key={`cell-${index}`}
+                                key={`cell-${entry.name}`}
                                 fill={COLORS[entry.name] || "#cccccc"}
                               />
                             ))}
@@ -358,7 +390,8 @@ export default function DashboardPage() {
                             <span
                               className="h-3 w-3 rounded-full mr-2"
                               style={{
-                                backgroundColor: COLORS[entry.name] || "#cccccc",
+                                backgroundColor:
+                                  COLORS[entry.name] || "#cccccc",
                               }}
                             ></span>
                             <span>{entry.name}</span>
@@ -417,7 +450,10 @@ export default function DashboardPage() {
                           </h4>
                           <div className="space-y-2 text-xs text-muted-foreground">
                             {stats.topCpuNodes.map((node) => (
-                              <div key={node.id} className="flex justify-between">
+                              <div
+                                key={node.id}
+                                className="flex justify-between"
+                              >
                                 <span>{node.name}</span>
                                 <span className="font-mono">
                                   {node.cpuUsage}%
@@ -432,7 +468,10 @@ export default function DashboardPage() {
                           </h4>
                           <div className="space-y-2 text-xs text-muted-foreground">
                             {stats.topRamNodes.map((node) => (
-                              <div key={node.id} className="flex justify-between">
+                              <div
+                                key={node.id}
+                                className="flex justify-between"
+                              >
                                 <span>{node.name}</span>
                                 <span className="font-mono">
                                   {node.ramUsage}%
@@ -476,12 +515,13 @@ export default function DashboardPage() {
                           >
                             <div className="flex-shrink-0">
                               <div
-                                className={`h-2 w-2 rounded-full mt-1.5 ${logAction === "CONNECT"
-                                  ? "bg-green-500"
-                                  : logAction === "DISCONNECT"
+                                className={`h-2 w-2 rounded-full mt-1.5 ${
+                                  logAction === "CONNECT"
+                                    ? "bg-green-500"
+                                    : logAction === "DISCONNECT"
                                     ? "bg-gray-400"
                                     : "bg-blue-500"
-                                  }`}
+                                }`}
                               ></div>
                             </div>
                             <div className="text-sm">
@@ -499,7 +539,6 @@ export default function DashboardPage() {
                                   <span className="font-semibold">
                                     {log.nodeNameSnapshot ?? "Unknown node"}
                                   </span>
-                                  .
                                 </p>
                               ) : (
                                 <p>
@@ -511,7 +550,6 @@ export default function DashboardPage() {
                                   <span className="font-semibold">
                                     {log.node.name}
                                   </span>
-                                  .
                                 </p>
                               )}
                               <p className="text-xs text-muted-foreground">

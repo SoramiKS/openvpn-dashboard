@@ -1,8 +1,7 @@
 // app/api/agent/full-report/route.ts
-import { NodeStatus, VpnCertificateStatus } from '@prisma/client';
+import { NodeStatus, VpnCertificateStatus, Prisma } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client'; // Import the Prisma namespace
 
 // Matching the AgentReportRequest model from Python agent
 interface AgentReportRequestBody {

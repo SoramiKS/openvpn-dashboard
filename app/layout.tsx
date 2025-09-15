@@ -1,29 +1,25 @@
-import "./globals.css";
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import "./globals.css";
 import Providers from "@/components/providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "OpenVPN Dashboard",
-  description: "Centralized OpenVPN Server",
+  description: "Manage your OpenVPN infrastructure with ease.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* ThemeProvider di paling luar */}
-        <ThemeProvider>
-          {/* SessionProvider di dalamnya */}
-          <Providers>{children}</Providers>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

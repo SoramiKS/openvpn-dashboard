@@ -2,67 +2,59 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-
+import { Copy, Check } from "lucide-react"; // Impor ikon Check
+import { useToast } from "@/hooks/use-toast";
 
 export default function NodeCopyButton({ nodeId }: { nodeId: string }) {
-  const [open, setOpen] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+    const { toast } = useToast();
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
+    const handleCopy = async () => {
+        // Jika sudah dalam state "Copied!", jangan lakukan apa-apa
+        if (isCopied) return;
+
+        try {
+            await navigator.clipboard.writeText(nodeId);
+            setIsCopied(true);
+            
+            // Tampilkan toast sebagai konfirmasi tambahan (opsional tapi bagus)
+            toast({
+                title: "Copied to clipboard!",
+                description: "Node ID is now in your clipboard.",
+            });
+            
+            // Reset state tombol setelah 2 detik
+            setTimeout(() => setIsCopied(false), 2000);
+
+        } catch (error) {
+            console.error("Failed to copy Node ID:", error);
+            toast({
+                title: "Clipboard Error",
+                description: "Failed to copy. Please try again or copy manually.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    return (
+        <Button
             size="sm"
             variant="secondary"
-            onClick={() => {
-              setOpen(true);
-            }}
-          >
-            <Copy className="h-4 w-4 mr-1" /> Show ID
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Node ID</DialogTitle>
-          </DialogHeader>
-          <div className="mt-2">
-            <div className="p-2 bg-muted rounded text-sm font-mono break-all">
-              {nodeId}
-            </div>
-            <Button
-              className="mt-2"
-              onClick={() => {
-                if (navigator.clipboard) {
-                  navigator.clipboard.writeText(nodeId).then(() => {
-                    toast({
-                      title: "Copied",
-                      description: `Node ID ${nodeId} copied to clipboard!`,
-                    });
-                  }).catch(() => {
-                    toast({
-                      title: "Clipboard Error",
-                      description: "Failed to copy to clipboard. Try manually.",
-                      variant: "destructive",
-                    });
-                  });
-                } else {
-                  toast({
-                    title: "Clipboard Not Supported",
-                    description: "Your browser doesn’t support copying. Please copy manually.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              Copy to Clipboard
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+            onClick={handleCopy}
+            // Nonaktifkan tombol saat dalam proses copy untuk mencegah klik ganda
+            disabled={isCopied} 
+            className="w-[110px]" // Beri lebar tetap agar layout tidak "melompat" saat teks berubah
+        >
+            {isCopied ? (
+                <>
+                    <Check className="h-4 w-4 mr-1 text-green-500" /> Copied!
+                </>
+            ) : (
+                <>
+                    <Copy className="h-4 w-4 mr-1" /> Copy ID
+                </>
+            )}
+        </Button>
+    );
 }

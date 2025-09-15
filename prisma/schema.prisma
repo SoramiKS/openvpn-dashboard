@@ -37,8 +37,8 @@ enum ActionType {
   RESTART_NODE
   GET_LATEST_OVPN
   DECOMMISSION_AGENT
-  CREATE_NODE   // <-- Tambahkan ini
-  DELETE_NODE   // <-- Tambahkan ini
+  CREATE_NODE
+  DELETE_NODE
 }
 
 enum ActionStatus {
@@ -60,8 +60,10 @@ model User {
 
   // Relasi: Satu User dashboard memiliki satu profil VpnUser
   vpnProfile VpnUser?
-
   ActionLog ActionLog[]
+  image             String?   // URL untuk foto profil
+  twoFactorSecret   String?   // Kunci rahasia 2FA (akan dienkripsi)
+  twoFactorEnabled  Boolean   @default(false)
 }
 
 model Node {

@@ -1,3 +1,4 @@
+// components/ui/sidebar.tsx (atau di mana pun file ini berada)
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -18,17 +19,31 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-type SidebarProps = React.ComponentProps<"div">;
+// PENINGKATAN: Tambahkan prop onLinkClick opsional
+type SidebarProps = React.ComponentProps<"div"> & {
+  onLinkClick?: () => void;
+};
 
 const navigation = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
+  {
+    name: "Overview",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    adminOnly: false,
+  },
   { name: "Nodes", href: "/dashboard/nodes", icon: Server, adminOnly: true },
-  { name: "VPN Profiles", href: "/dashboard/profiles", icon: FileKey, adminOnly: false },
+  {
+    name: "VPN Profiles",
+    href: "/dashboard/profiles",
+    icon: FileKey,
+    adminOnly: false,
+  },
   { name: "Logs", href: "/dashboard/logs", icon: ScrollText, adminOnly: false },
   { name: "Users", href: "/dashboard/users", icon: Users, adminOnly: true },
 ];
 
-export function Sidebar({ className }: SidebarProps) {
+// PENINGKATAN: Terima prop onLinkClick
+export function Sidebar({ className, onLinkClick }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const userRole = session?.user?.role ?? "USER";
@@ -38,7 +53,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div className={cn("space-y-4 py-4 px-3", className)}>
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="py-10 h-10 w-full" />
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
       </div>
@@ -46,12 +61,7 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   return (
-    <div
-      className={cn(
-        "pb-4 border-r flex flex-col",
-        className
-      )}
-    >
+    <div className={cn("border-r flex flex-col h-full", className)}>
       <div className="space-y-4 py-4 flex-1">
         <div className="px-3 py-2">
           <div className="flex items-center mb-8 px-2">
@@ -63,23 +73,22 @@ export function Sidebar({ className }: SidebarProps) {
               className="mr-2 rounded-full"
             />
             <div>
-              <h1 className="text-xl font-bold ">
-                OpenVPN
-              </h1>
+              <h1 className="text-xl font-bold">OpenVPN</h1>
               <p className="text-xs text-muted-foreground">Manager</p>
             </div>
           </div>
           <div className="space-y-1">
             {navigation
-              .filter(item => !item.adminOnly || userRole === "ADMIN")
-              .map(item => (
-                <Link key={item.name} href={item.href}>
+              .filter((item) => !item.adminOnly || userRole === "ADMIN")
+              .map((item) => (
+                <Link key={item.name} href={item.href} passHref>
                   <Button
                     variant={pathname === item.href ? "secondary" : "ghost"}
-                    className="w-full justify-start"
+                    className="w-full justify-start flex items-center gap-2"
+                    onClick={onLinkClick}
                   >
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.name}
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
                   </Button>
                 </Link>
               ))}
@@ -89,10 +98,18 @@ export function Sidebar({ className }: SidebarProps) {
 
       {session?.user?.email && (
         <div className="px-3 py-2 mt-auto border-t text-xs text-muted-foreground">
-          Logged in as: {session.user.email}
+          <Link
+            href={"/dashboard/userprofile"}
+            className="hover:bg-accent hover:text-accent-foreground p-2 rounded-md flex items-center"
+            onClick={onLinkClick}
+          >
+            <div className="flex items-center">
+              <span>Logged in as:</span>
+              <span className="font-semibold ml-1 truncate">{session.user.email}</span>
+            </div>
+          </Link>
         </div>
       )}
-
     </div>
   );
 }
@@ -108,7 +125,7 @@ export function MobileSidebar() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64">
-        <Sidebar />
+        <Sidebar onLinkClick={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );

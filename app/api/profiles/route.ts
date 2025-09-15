@@ -1,122 +1,98 @@
-import { ActionType, ActionStatus } from '@prisma/client';
-import { NextResponse } from 'next/server';
+// app/api/profiles/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { Prisma, VpnCertificateStatus } from '@prisma/client';
 
-interface CreateProfileRequestBody {
-  username: string;
-  nodeId: string;
-}
+const getStatusGroup = (group: string | null) => {
+  if (group === 'active') {
+    return [VpnCertificateStatus.VALID, VpnCertificateStatus.PENDING];
+  }
+  if (group === 'revoked') {
+    return [VpnCertificateStatus.REVOKED, VpnCertificateStatus.EXPIRED, VpnCertificateStatus.UNKNOWN];
+  }
+  return [];
+};
 
-// --- GET Request (Fetch all VPN Users/Profiles) ---
-export async function GET() {
-  try {
-    // --- TAMBAHKAN BLOK INI UNTUK KEAMANAN ---
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    // --- AKHIR BLOK TAMBAHAN ---
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
-    const vpnUsers = await prisma.vpnUser.findMany({
-      select: {
-        id: true,
-        username: true,
-        nodeId: true,
-        node: { // Include node name for display purposes
-          select: { name: true, status: true }
-        },
-        status: true,
-        expirationDate: true,
-        revocationDate: true, // Include revocation date
-        serialNumber: true, // Include serial number
-        ovpnFileContent: true, // Include OVPN file content for download
-        isActive: true, // Include active status
-        lastConnected: true, // Include last connected timestamp
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    return NextResponse.json(vpnUsers, { status: 200 });
-  } catch (error: unknown) {
-    console.error('Error fetching VPN profiles:', error);
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
-  }
-}
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const skip = (page - 1) * pageSize;
 
-// --- POST Request (Create a new VPN User/Profile) ---
-export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    // Reverted: Removed withPassword and password from destructuring
-    const { username, nodeId }: CreateProfileRequestBody = await req.json();
+    const statusGroup = searchParams.get('statusGroup');
+    const searchTerm = searchParams.get('searchTerm') || '';
+    const nodeId = searchParams.get('nodeId');
+    const specificStatus = searchParams.get('status');
 
-    // Normalize username to lowercase for consistency across the system
-    const normalizedUsername = username.toLowerCase();
+    const statuses = getStatusGroup(statusGroup);
 
-    if (!normalizedUsername || !nodeId) {
-      return NextResponse.json({ message: 'Username and Node ID are required.' }, { status: 400 });
-    }
+    // --- PERBAIKAN UTAMA ADA DI SINI ---
+    // DIHAPUS: Blok 'if' yang menyebabkan error 400 Bad Request
+    // if (statuses.length === 0 && !specificStatus) {
+    //   return NextResponse.json({ message: 'Invalid statusGroup' }, { status: 400 });
+    // }
 
-    // Reverted: Removed password verification logic
+    const where: Prisma.VpnUserWhereInput = {
+      username: {
+        contains: searchTerm,
+        mode: 'insensitive',
+        not: {
+            startsWith: "server_"
+        }
+      },
+    };
 
-    // Check if a VpnUser with this username already exists.
-    const existingVpnUser = await prisma.vpnUser.findUnique({
-      where: { username: normalizedUsername },
-    });
+    if (nodeId && nodeId !== 'all') {
+      where.nodeId = nodeId;
+    }
 
-    if (existingVpnUser) {
-      return NextResponse.json({ message: `VPN profile for '${username}' already exists or revoked. Please use another name` }, { status: 409 });
-    }
-    // --- PERBAIKAN DI SINI ---
-    // Ganti nama variabel 'node' menjadi 'targetNode'
-    const targetNode = await prisma.node.findUnique({ where: { id: nodeId } });
-    if (!targetNode) {
-      return NextResponse.json({ message: 'Node not found' }, { status: 404 });
-    }
-    // --- AKHIR PERBAIKAN ---
+    // DIUBAH: Logika filter status sekarang opsional
+    if (specificStatus && specificStatus !== 'all') {
+      where.status = specificStatus as VpnCertificateStatus;
+    } else if (statuses.length > 0) {
+      // Hanya tambahkan filter status jika statusGroup diberikan
+      where.status = {
+        in: statuses,
+      };
+    }
+    // Jika tidak ada 'specificStatus' atau 'statusGroup', maka tidak ada filter status,
+    // yang berarti Prisma akan mengambil SEMUA profil. Ini yang kita inginkan untuk dashboard.
 
-    // Check if there's an existing pending CREATE_USER action for this username
-    const existingPendingAction = await prisma.actionLog.findFirst({
-      where: {
-        action: ActionType.CREATE_USER,
-        // Reverted: Searching for a direct string match in the details field
-        details: normalizedUsername,
-        status: ActionStatus.PENDING,
-      },
-    });
+    const [vpnUsers, totalUsers] = await prisma.$transaction([
+      prisma.vpnUser.findMany({
+        where,
+        // DIUBAH: Jika tidak ada statusGroup, jangan lakukan pagination (ambil semua data untuk dashboard)
+        ...(statusGroup && { skip, take: pageSize }),
+        select: {
+          id: true,
+          username: true,
+          nodeId: true,
+          node: { select: { name: true, status: true } },
+          status: true,
+          expirationDate: true,
+          revocationDate: true,
+          ovpnFileContent: true,
+          isActive: true,
+          lastConnected: true,
+          createdAt: true,
+        },
+        orderBy: { username: 'asc' },
+      }),
+      prisma.vpnUser.count({ where }),
+    ]);
 
-    if (existingPendingAction) {
-      return NextResponse.json({ message: `Creation for '${username}' is already pending.` }, { status: 409 });
-    }
-
-    // Reverted: No longer creating a JSON object for details
-
-    // Create an ActionLog entry with the username string directly in the details field
-    const actionLog = await prisma.actionLog.create({
-      data: {
-        action: ActionType.CREATE_USER,
-        nodeId: nodeId,
-        // Reverted: Saving the normalized username directly
-        details: normalizedUsername,
-        status: ActionStatus.PENDING,
-        initiatorId: session.user.id, // Log the admin who initiated the action
-        nodeNameSnapshot: targetNode.name,
-      },
-    });
-
-    return NextResponse.json({ message: 'VPN profile creation request submitted successfully. It will be processed by the agent.', actionLogId: actionLog.id }, { status: 202 });
-  } catch (error: unknown) {
-    console.error('Error submitting VPN profile creation request:', error);
-    if (error instanceof Error) {
-      return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
-    }
-    // Provide a default error response if the error is not an instance of Error
-    return NextResponse.json({ message: 'An unknown internal server error occurred' }, { status: 500 });
-  }
+    return NextResponse.json({ data: vpnUsers, total: totalUsers }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('Error fetching VPN profiles:', error);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+  }
 }
