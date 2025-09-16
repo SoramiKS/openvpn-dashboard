@@ -31,12 +31,14 @@ export const LoginForm = () => {
     const error = searchParams.get("error");
     if (error) {
       toast({
-        title: "Login Failed",
+        title: "Login Gagal",
         description: decodeURIComponent(error),
         variant: "destructive",
       });
+
+      router.replace('/login', { scroll: false });
     }
-  }, [searchParams, toast]);
+  }, [searchParams, toast, router]);
 
   // --- HANDLE SUBMIT ---
   const handleLoginSubmit = async (e: React.FormEvent) => {

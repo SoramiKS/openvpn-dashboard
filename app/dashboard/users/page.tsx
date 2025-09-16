@@ -45,10 +45,18 @@ import {
 } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 // 1. Impor ikon Eye dan EyeOff
-import { Loader2, Trash2, Edit, Eye, EyeOff } from "lucide-react";
+import { Loader2, Trash2, Edit, Eye, EyeOff, Plus } from "lucide-react";
 import { AddUserDialog } from "@/components/admin/add-user-dialog";
 import { useSession } from "next-auth/react";
-import { Role, User } from "@prisma/client";
+import { Role, User, WhitelistType } from "@prisma/client";
+
+type WhitelistEntry = {
+  id: string;
+  type: WhitelistType;
+  value: string;
+  createdAt: string;
+};
+
 
 type SafeUser = Omit<User, "password">;
 const USERS_PER_PAGE = 10;
@@ -68,6 +76,62 @@ export default function UserManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
+  const [newValue, setNewValue] = useState("");
+  const [newType, setNewType] = useState<WhitelistType>(WhitelistType.DOMAIN);
+  const [isWhitelistLoading, setIsWhitelistLoading] = useState(true);
+
+  const fetchWhitelist = useCallback(async () => {
+    setIsWhitelistLoading(true);
+    try {
+      const res = await fetch('/api/admin/google-whitelist');
+      if (!res.ok) throw new Error("Failed to fetch whitelist");
+      setWhitelist(await res.json());
+    } catch (error) {
+      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsWhitelistLoading(false);
+    }
+  }, [toast]);
+
+  const handleAddWhitelist = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/google-whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newValue, type: newType }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: "Success", description: `${newType.charAt(0) + newType.slice(1).toLowerCase()} '${data.value}' has been added.` });
+      setNewValue("");
+      fetchWhitelist();
+    } catch (error) {
+      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteWhitelist = async (id: string) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/google-whitelist/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast({ title: "Success", description: "Entry has been removed." });
+      fetchWhitelist();
+    } catch (error) {
+      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWhitelist();
+  }, [fetchWhitelist]);
 
   const [userToEdit, setUserToEdit] = useState<SafeUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<SafeUser | null>(null);
@@ -240,7 +304,7 @@ export default function UserManagementPage() {
       setIsSubmitting(false);
     }
   };
-    
+
   // 3. Fungsi untuk mengubah visibilitas password
   const togglePasswordVisibility = (field: "current" | "new") => {
     setPasswordVisibility((prev) => ({
@@ -262,6 +326,69 @@ export default function UserManagementPage() {
         </div>
         <AddUserDialog onUserAdded={() => fetchUsers(1)} />
       </div>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <h2 className="text-2xl font-bold">Google Sign-In Whitelist</h2>
+          <p className="text-muted-foreground">Manage specific domains or individual emails allowed to sign in.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <Input
+              placeholder={newType === 'DOMAIN' ? 'e.g., example.com' : 'e.g., user@email.com'}
+              value={newValue}
+              onChange={e => setNewValue(e.target.value)}
+              className="flex-grow"
+            />
+            <div className="flex gap-2">
+              <Select value={newType} onValueChange={(v) => setNewType(v as WhitelistType)}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={WhitelistType.DOMAIN}>Domain</SelectItem>
+                  <SelectItem value={WhitelistType.EMAIL}>Email</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAddWhitelist} disabled={isSubmitting || !newValue.trim()}>
+                {isSubmitting && !isWhitelistLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                Add
+              </Button>
+            </div>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Value (Domain or Email)</TableHead>
+                <TableHead>Added On</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isWhitelistLoading ? (
+                <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+              ) : whitelist.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Whitelist is empty. All Google sign-ins are currently blocked.</TableCell></TableRow>
+              ) : (
+                whitelist.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
+                    <TableCell className="font-mono">{item.value}</TableCell>
+                    <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteWhitelist(item.id)} disabled={isSubmitting}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -424,7 +551,7 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* 4. Terapkan struktur baru pada input password */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="current-password-edit" className="text-right">
@@ -457,7 +584,7 @@ export default function UserManagementPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="password-edit" className="text-right">
                 New Password

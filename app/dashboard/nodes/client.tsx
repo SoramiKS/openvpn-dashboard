@@ -29,8 +29,6 @@ import {
   FileText,
   Server,
   Cpu,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -63,6 +61,8 @@ import {
 } from "recharts";
 import { useWS } from "@/components/WebSocketProvider";
 import countryEmoji from "country-emoji";
+import { useTableSorting } from "@/hooks/useTableSorting";
+import { SortableHeader } from "@/components/SortableHeader";
 
 const getFlagFromLocation = (location: string | null) => {
   if (!location) return "🏳️";
@@ -94,6 +94,7 @@ interface NodesClientPageProps {
 
 export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPageProps) {
   // BARU: State lokal untuk menampung data dari provider
+  const { sortBy, sortOrder, handleSort } = useTableSorting('name', 'asc');
   const [nodes, setNodes] = useState<Node[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,8 +104,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
   const { nodesData, isConnected } = useWS();
 
   // State lainnya tetap sama
-  const [sortBy, setSortBy] = useState<keyof Node | null>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<NodeStatus | "all">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -195,24 +194,30 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
 
     if (sortBy) {
       filtered.sort((a, b) => {
-        const aValue = a[sortBy];
-        const bValue = b[sortBy];
+        const aValue = a[sortBy as keyof Node];
+        const bValue = b[sortBy as keyof Node];
+
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        }
-        if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-        }
+
         if (aValue instanceof Date && bValue instanceof Date) {
-          return sortDirection === 'asc' ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
+          return sortOrder === 'asc' ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
+        }
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortOrder === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
         }
         return 0;
       });
     }
     return filtered;
-  }, [nodes, searchTerm, filterStatus, sortBy, sortDirection]);
+  }, [nodes, searchTerm, filterStatus, sortBy, sortOrder]);
 
   // Semua handler (add, edit, delete, sort) tidak berubah, tapi mereka memanggil `fetchNodes` untuk sinkronisasi
   const handleProceedToGuide = async (e: React.FormEvent) => {
@@ -290,20 +295,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       setIsDeleteModalOpen(false);
       setNodeToDelete(null);
     }
-  };
-
-  const handleSort = (column: keyof Node) => {
-    if (sortBy === column) {
-      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(column);
-      setSortDirection("asc");
-    }
-  };
-
-  const SortIndicator = ({ column }: { column: keyof Node }) => {
-    if (sortBy !== column) return null;
-    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1" /> : <ArrowDown className="h-4 w-4 ml-1" />;
   };
 
   // Render method tidak berubah
@@ -410,13 +401,13 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("name")}><div className="flex items-center">Name <SortIndicator column="name" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("ip")}><div className="flex items-center">IP Address <SortIndicator column="ip" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("location")}><div className="flex items-center">Location <SortIndicator column="location" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("status")}><div className="flex items-center">Status <SortIndicator column="status" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("cpuUsage")}><div className="flex items-center">CPU <SortIndicator column="cpuUsage" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("ramUsage")}><div className="flex items-center">RAM <SortIndicator column="ramUsage" /></div></TableHead>
-                  <TableHead className="cursor-pointer hover:bg-gray-800" onClick={() => handleSort("lastSeen")}><div className="flex items-center">Last Seen <SortIndicator column="lastSeen" /></div></TableHead>
+                  <SortableHeader column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Name</SortableHeader>
+                  <SortableHeader column="ip" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>IP Address</SortableHeader>
+                  <SortableHeader column="location" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Location</SortableHeader>
+                  <SortableHeader column="status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Status</SortableHeader>
+                  <SortableHeader column="cpuUsage" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>CPU</SortableHeader>
+                  <SortableHeader column="ramUsage" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>RAM</SortableHeader>
+                  <SortableHeader column="lastSeen" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Last Seen</SortableHeader>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>

@@ -1,60 +1,20 @@
-// app/dashboard/logs/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  RefreshCw,
-  Loader2,
-  Download,
-  XCircle,
-  Calendar as CalendarIcon,
-} from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { RefreshCw, Loader2, Download, XCircle, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  ActionLog,
-  ActionStatus,
-  VpnActivityLog,
-  ActionType,
-} from "@prisma/client";
+import { ActionLog, ActionStatus, VpnActivityLog, ActionType } from "@prisma/client";
+import { useTableSorting } from "@/hooks/useTableSorting";
+import { SortableHeader } from "@/components/SortableHeader";
 
 // Extended types
 interface ExtendedActionLog extends ActionLog {
@@ -71,20 +31,13 @@ interface NodeForSelect {
   name: string;
 }
 
-// Byte formatting function
-const formatBytes = (
-  bytes: number | string | bigint | null | undefined,
-  decimals = 2
-) => {
-  if (bytes === null || bytes === undefined || Number(bytes) === 0)
-    return "0 Bytes";
+const formatBytes = (bytes: number | string | bigint | null | undefined, decimals = 2) => {
+  if (bytes === null || bytes === undefined || Number(bytes) === 0) return "0 Bytes";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(Number(bytes)) / Math.log(k));
-  return (
-    parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
-  );
+  return parseFloat((Number(bytes) / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
 
 const LOGS_PER_PAGE = 10;
@@ -93,8 +46,7 @@ export default function LogsPage() {
   const [actionLogs, setActionLogs] = useState<ExtendedActionLog[]>([]);
   const [vpnActivityLogs, setVpnActivityLogs] = useState<ExtendedVpnActivityLog[]>([]);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isVpnLogLoading, setIsVpnLogLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState({ action: true, activity: true });
   const { toast } = useToast();
 
   const [totalActionLogs, setTotalActionLogs] = useState(0);
@@ -102,79 +54,60 @@ export default function LogsPage() {
   const [totalVpnActivityLogs, setTotalVpnActivityLogs] = useState(0);
   const [vpnActivityLogPage, setVpnActivityLogPage] = useState(1);
 
-  const [actionLogFilter, setActionLogFilter] = useState({
-    nodeId: "all",
-    action: "all",
-  });
-  const [vpnActivityLogFilter, setVpnActivityLogFilter] = useState<{
-    nodeId: string;
-    action: string;
-    startDate?: Date;
-    endDate?: Date;
-  }>({ nodeId: "all", action: "all" });
+  const [actionLogFilter, setActionLogFilter] = useState({ nodeId: "all", action: "all" });
+  const [vpnActivityLogFilter, setVpnActivityLogFilter] = useState<{ nodeId: string; action: string; startDate?: Date; endDate?: Date; }>({ nodeId: "all", action: "all" });
 
-  // --- MODIFIKASI: Fungsi fetch kini mengirim filter ke API ---
-  const fetchActionLogs = useCallback(
-    async (page: number, filters: typeof actionLogFilter) => {
-      setIsLoading(true);
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(LOGS_PER_PAGE),
-        nodeId: filters.nodeId,
-        action: filters.action,
-      });
-      try {
-        const response = await fetch(`/api/logs?${params.toString()}`);
-        if (!response.ok) throw new Error("Failed to fetch action logs");
-        const { data, total } = await response.json();
-        setActionLogs(data);
-        setTotalActionLogs(total);
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to load action logs.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
+  const { sortBy: actionSortBy, sortOrder: actionSortOrder, handleSort: handleActionSort } = useTableSorting('createdAt', 'desc');
+  const { sortBy: activitySortBy, sortOrder: activitySortOrder, handleSort: handleActivitySort } = useTableSorting('timestamp', 'desc');
 
-  const fetchVpnActivityLogs = useCallback(
-    async (page: number, filters: typeof vpnActivityLogFilter) => {
-      setIsVpnLogLoading(true);
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(LOGS_PER_PAGE),
-        nodeId: filters.nodeId,
-        action: filters.action,
-      });
-      if (filters.startDate) {
-        params.append("startDate", filters.startDate.toISOString());
-      }
-      if (filters.endDate) {
-        params.append("endDate", filters.endDate.toISOString());
-      }
-      try {
-        const response = await fetch(`/api/activity-logs?${params.toString()}`);
-        if (!response.ok) throw new Error("Failed to fetch user activity logs");
-        const { data, total } = await response.json();
-        setVpnActivityLogs(data);
-        setTotalVpnActivityLogs(total);
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to load user activity logs.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsVpnLogLoading(false);
-      }
-    },
-    [toast]
-  );
+  const fetchActionLogs = useCallback(async (page: number, filters: typeof actionLogFilter, sortBy: string, sortOrder: string) => {
+    setIsLoading(prev => ({ ...prev, action: true }));
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(LOGS_PER_PAGE),
+      nodeId: filters.nodeId,
+      action: filters.action,
+      sortBy,
+      sortOrder,
+    });
+    try {
+      const response = await fetch(`/api/logs?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch action logs");
+      const { data, total } = await response.json();
+      setActionLogs(data);
+      setTotalActionLogs(total);
+    } catch (error) {
+      toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsLoading(prev => ({ ...prev, action: false }));
+    }
+  }, [toast]);
+
+  const fetchVpnActivityLogs = useCallback(async (page: number, filters: typeof vpnActivityLogFilter, sortBy: string, sortOrder: string) => {
+    setIsLoading(prev => ({ ...prev, activity: true }));
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(LOGS_PER_PAGE),
+      nodeId: filters.nodeId,
+      action: filters.action,
+      sortBy,
+      sortOrder,
+    });
+    if (filters.startDate) params.append("startDate", filters.startDate.toISOString());
+    if (filters.endDate) params.append("endDate", filters.endDate.toISOString());
+
+    try {
+      const response = await fetch(`/api/activity-logs?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch user activity logs");
+      const { data, total } = await response.json();
+      setVpnActivityLogs(data);
+      setTotalVpnActivityLogs(total);
+    } catch (error) {
+      toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsLoading(prev => ({ ...prev, activity: false }));
+    }
+  }, [toast]);
 
   const fetchNodesForSelect = useCallback(async () => {
     try {
@@ -191,48 +124,25 @@ export default function LogsPage() {
   }, [toast]);
 
   const handleDownloadCsv = () => {
-    const headers = ["Timestamp", "Node", "Username", "Action", "Public IP", "VPN IP", "Data Received", "Data Sent"];
-    // Note: This now downloads the currently visible (and filtered) page, not the entire dataset.
-    const rows = vpnActivityLogs.map((log) =>
-      [
-        new Date(log.timestamp).toLocaleString(),
-        log.node.name,
-        log.username || "N/A",
-        log.action,
-        log.publicIp || "N/A",
-        log.vpnIp || "N/A",
-        log.bytesReceived?.toString() || "0",
-        log.bytesSent?.toString() || "0",
-      ].map((field) => `"${String(field).replace(/"/g, '""')}"`).join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `user-activity-logs-${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const params = new URLSearchParams({
+      nodeId: vpnActivityLogFilter.nodeId,
+      action: vpnActivityLogFilter.action,
+    });
+    if (vpnActivityLogFilter.startDate) params.append("startDate", vpnActivityLogFilter.startDate.toISOString());
+    if (vpnActivityLogFilter.endDate) params.append("endDate", vpnActivityLogFilter.endDate.toISOString());
+
+    window.open(`/api/activity-logs/download?${params.toString()}`, '_blank');
   };
 
-  // --- MODIFIKASI: useEffect kini bergantung pada filter juga ---
   useEffect(() => {
-    fetchActionLogs(actionLogPage, actionLogFilter);
-  }, [fetchActionLogs, actionLogPage, actionLogFilter]);
-
-  useEffect(() => {
-    fetchVpnActivityLogs(vpnActivityLogPage, vpnActivityLogFilter);
-  }, [fetchVpnActivityLogs, vpnActivityLogPage, vpnActivityLogFilter]);
+    fetchActionLogs(actionLogPage, actionLogFilter, actionSortBy, actionSortOrder);
+  }, [actionLogPage, actionLogFilter, actionSortBy, actionSortOrder, fetchActionLogs]);
 
   useEffect(() => {
-    fetchNodesForSelect();
-  }, [fetchNodesForSelect]);
+    fetchVpnActivityLogs(vpnActivityLogPage, vpnActivityLogFilter, activitySortBy, activitySortOrder);
+  }, [vpnActivityLogPage, vpnActivityLogFilter, activitySortBy, activitySortOrder, fetchVpnActivityLogs]);
 
-
-  // --- HAPUS: useMemo untuk filtering client-side tidak lagi diperlukan ---
-  // const filteredActionLogs = ...
-  // const filteredVpnActivityLogs = ...
+  useEffect(() => { fetchNodesForSelect(); }, [fetchNodesForSelect]);
 
   const getLogStatusBadgeVariant = (status: ActionStatus) => {
     switch (status) {
@@ -243,7 +153,7 @@ export default function LogsPage() {
     }
   };
 
-  const combinedLoading = isLoading || isVpnLogLoading;
+  const combinedLoading = isLoading.action || isLoading.activity;
   const totalActionLogPages = Math.ceil(totalActionLogs / LOGS_PER_PAGE) || 1;
   const totalVpnActivityLogPages = Math.ceil(totalVpnActivityLogs / LOGS_PER_PAGE) || 1;
 
@@ -252,27 +162,21 @@ export default function LogsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">System Logs</h1>
-          <p className="text-gray-600">Monitor system events and activities</p>
+          <p className="text-muted-foreground">Monitor system events and activities</p>
         </div>
         <Button
-          className="hover:shadow-xl hover:scale-105 duration-200 transition-transform"
           variant="outline"
           onClick={() => {
-            fetchActionLogs(actionLogPage, actionLogFilter);
-            fetchVpnActivityLogs(vpnActivityLogPage, vpnActivityLogFilter);
+            fetchActionLogs(actionLogPage, actionLogFilter, actionSortBy, actionSortOrder);
+            fetchVpnActivityLogs(vpnActivityLogPage, vpnActivityLogFilter, activitySortBy, activitySortOrder);
           }}
           disabled={combinedLoading}
         >
-          {combinedLoading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
+          {combinedLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
           Refresh
         </Button>
       </div>
 
-      {/* Action Logs Card */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
@@ -316,37 +220,43 @@ export default function LogsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          ) : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Node</TableHead><TableHead>Action</TableHead><TableHead>Status</TableHead><TableHead>User/Details</TableHead><TableHead>Initiator</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {/* --- MODIFIKASI: Gunakan state `actionLogs` langsung --- */}
-                {actionLogs.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8">No logs found.</TableCell></TableRow>
-                ) : (
-                  actionLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
-                      <TableCell>
-                        {log.node ? log.node.name : <span className="text-gray-400 italic">{log.nodeNameSnapshot || "[Node Deleted]"}</span>}
-                      </TableCell>
-                      <TableCell>{log.action}</TableCell>
-                      <TableCell><Badge variant={getLogStatusBadgeVariant(log.status)}>{log.status}</Badge></TableCell>
-                      <TableCell className="max-w-md truncate" title={log.message || log.details || ""}>
-                        {log.vpnUser?.username ? `User: ${log.vpnUser.username}` : log.details}
-                        {log.message && ` - ${log.message}`}
-                      </TableCell>
-                      <TableCell>{log.initiator?.email || 'System'}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHeader column="createdAt" sortBy={actionSortBy} sortOrder={actionSortOrder} onSort={handleActionSort}>Date</SortableHeader>
+                <TableHead>Node</TableHead>
+                <SortableHeader column="action" sortBy={actionSortBy} sortOrder={actionSortOrder} onSort={handleActionSort}>Action</SortableHeader>
+                <SortableHeader column="status" sortBy={actionSortBy} sortOrder={actionSortOrder} onSort={handleActionSort}>Status</SortableHeader>
+                <TableHead>User/Details</TableHead>
+                <TableHead>Initiator</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading.action ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : actionLogs.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8">No logs found.</TableCell></TableRow>
+              ) : (
+                actionLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {log.node ? log.node.name : <span className="text-gray-400 italic">{log.nodeNameSnapshot || "[Node Deleted]"}</span>}
+                    </TableCell>
+                    <TableCell>{log.action}</TableCell>
+                    <TableCell><Badge variant={getLogStatusBadgeVariant(log.status)}>{log.status}</Badge></TableCell>
+                    <TableCell className="max-w-md truncate" title={log.message || log.details || ""}>
+                      {log.vpnUser?.username ? `User: ${log.vpnUser.username}` : log.details}
+                      {log.message && ` - ${log.message}`}
+                    </TableCell>
+                    <TableCell>{log.initiator?.email || 'System'}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
-        <CardFooter>
+        {totalActionLogPages > 1 && <CardFooter>
           <Pagination>
             <PaginationContent>
               <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage > 1) setActionLogPage(actionLogPage - 1); }} /></PaginationItem>
@@ -354,10 +264,9 @@ export default function LogsPage() {
               <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage < totalActionLogPages) setActionLogPage(actionLogPage + 1); }} /></PaginationItem>
             </PaginationContent>
           </Pagination>
-        </CardFooter>
+        </CardFooter>}
       </Card>
 
-      {/* User Activity Logs Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -428,34 +337,42 @@ export default function LogsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isVpnLogLoading ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          ) : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Timestamp</TableHead><TableHead>Node</TableHead><TableHead>Username</TableHead><TableHead>Action</TableHead><TableHead>Public IP</TableHead><TableHead>VPN IP</TableHead><TableHead>Data Received</TableHead><TableHead>Data Sent</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {/* --- MODIFIKASI: Gunakan state `vpnActivityLogs` langsung --- */}
-                {vpnActivityLogs.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8">No activity found.</TableCell></TableRow>
-                ) : (
-                  vpnActivityLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
-                      <TableCell>{log.node.name}</TableCell>
-                      <TableCell>{log.username || "N/A"}</TableCell>
-                      <TableCell><Badge variant={log.action === "CONNECT" ? "default" : "secondary"}>{log.action}</Badge></TableCell>
-                      <TableCell>{log.publicIp || "N/A"}</TableCell>
-                      <TableCell>{log.vpnIp || "N/A"}</TableCell>
-                      <TableCell>{formatBytes(log.bytesReceived)}</TableCell>
-                      <TableCell>{formatBytes(log.bytesSent)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHeader column="timestamp" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Timestamp</SortableHeader>
+                <TableHead>Node</TableHead>
+                <SortableHeader column="username" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Username</SortableHeader>
+                <SortableHeader column="action" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Action</SortableHeader>
+                <SortableHeader column="publicIp" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Public IP</SortableHeader>
+                <SortableHeader column="vpnIp" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>VPN IP</SortableHeader>
+                <SortableHeader column="bytesReceived" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Data Received</SortableHeader>
+                <SortableHeader column="bytesSent" sortBy={activitySortBy} sortOrder={activitySortOrder} onSort={handleActivitySort}>Data Sent</SortableHeader>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading.activity ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : vpnActivityLogs.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8">No activity found.</TableCell></TableRow>
+              ) : (
+                vpnActivityLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
+                    <TableCell>{log.node.name}</TableCell>
+                    <TableCell>{log.username || "N/A"}</TableCell>
+                    <TableCell><Badge variant={log.action === "CONNECT" ? "default" : "secondary"}>{log.action}</Badge></TableCell>
+                    <TableCell>{log.publicIp || "N/A"}</TableCell>
+                    <TableCell>{log.vpnIp || "N/A"}</TableCell>
+                    <TableCell>{formatBytes(log.bytesReceived)}</TableCell>
+                    <TableCell>{formatBytes(log.bytesSent)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
-        <CardFooter>
+        {totalVpnActivityLogPages > 1 && <CardFooter>
           <Pagination>
             <PaginationContent>
               <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage > 1) setVpnActivityLogPage(vpnActivityLogPage - 1); }} /></PaginationItem>
@@ -463,7 +380,7 @@ export default function LogsPage() {
               <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage < totalVpnActivityLogPages) setVpnActivityLogPage(vpnActivityLogPage + 1); }} /></PaginationItem>
             </PaginationContent>
           </Pagination>
-        </CardFooter>
+        </CardFooter>}
       </Card>
     </div>
   );

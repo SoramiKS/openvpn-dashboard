@@ -30,30 +30,30 @@ export const authOptions: AuthOptions = {
         }
 
         const ip = req.headers?.["x-forwarded-for"] || "unknown";
-        
+
         // --- LOGIKA BARU UNTUK 2FA ---
         const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
+          where: { email: credentials.email },
         });
 
         if (!user) throw new Error("Invalid email or password.");
-        
+
         // Skenario 1: Verifikasi Token 2FA (Langkah 2)
         if (credentials.twoFactorToken) {
-            if (!user.twoFactorSecret || !user.twoFactorEnabled) {
-                throw new Error("2FA is not enabled for this account.");
-            }
-            const isValid = authenticator.check(credentials.twoFactorToken, user.twoFactorSecret);
-            if (isValid) {
-                return { id: user.id, email: user.email!, role: user.role };
-            } else {
-                throw new Error("Invalid 2FA token.");
-            }
+          if (!user.twoFactorSecret || !user.twoFactorEnabled) {
+            throw new Error("2FA is not enabled for this account.");
+          }
+          const isValid = authenticator.check(credentials.twoFactorToken, user.twoFactorSecret);
+          if (isValid) {
+            return { id: user.id, email: user.email!, role: user.role };
+          } else {
+            throw new Error("Invalid 2FA token.");
+          }
         }
 
         // Skenario 2: Verifikasi Password (Langkah 1)
         if (!credentials.password || !credentials.recaptchaToken) {
-            throw new Error("Password and reCAPTCHA are required.");
+          throw new Error("Password and reCAPTCHA are required.");
         }
 
         // Lakukan rate limiting dan reCAPTCHA hanya untuk verifikasi password
@@ -70,13 +70,13 @@ export const authOptions: AuthOptions = {
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
         if (!isPasswordValid) throw new Error("Invalid email or password.");
-        
+
         // Jika password valid, cek status 2FA
         if (user.twoFactorEnabled) {
-            // JANGAN login, beri sinyal ke frontend untuk meminta token 2FA
-            throw new Error("2FA_REQUIRED");
+          // JANGAN login, beri sinyal ke frontend untuk meminta token 2FA
+          throw new Error("2FA_REQUIRED");
         }
-        
+
         // Jika password valid dan 2FA tidak aktif, login seperti biasa
         return { id: user.id, email: user.email!, role: user.role };
       },
@@ -91,11 +91,26 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         if (!user.email) return false; // safety
-        const emailDomain = user.email.split("@")[1];
+        const email = user.email;
+        const domain = email.split("@")[1];
 
-        // Optional domain restriction
-        if (emailDomain !== "clouddonut.com") {
-          throw new Error("Your email have no access to this application.");
+        const whitelistEntries = await prisma.googleWhitelist.findMany({
+          select: { value: true, type: true },
+        });
+
+        // Cek apakah email atau domain pengguna ada di dalam whitelist
+        const isAllowed = whitelistEntries.some(entry => {
+          if (entry.type === 'EMAIL') {
+            return entry.value === email; // Cek kecocokan email persis
+          }
+          if (entry.type === 'DOMAIN') {
+            return entry.value === domain; // Cek kecocokan domain
+          }
+          return false;
+        });
+
+        if (!isAllowed) {
+          throw new Error(`Your email or domain (@${domain}) is not allowed to access this application.`);
         }
 
         // Auto-create user in DB if not exists

@@ -15,6 +15,11 @@ enum Role {
   USER
 }
 
+enum WhitelistType {
+  DOMAIN
+  EMAIL
+}
+
 enum NodeStatus {
   ONLINE
   OFFLINE
@@ -64,6 +69,7 @@ model User {
   image             String?   // URL untuk foto profil
   twoFactorSecret   String?   // Kunci rahasia 2FA (akan dienkripsi)
   twoFactorEnabled  Boolean   @default(false)
+  addedDomains GoogleWhitelist[]
 }
 
 model Node {
@@ -153,4 +159,13 @@ model VpnActivityLog {
   // Relation to the Node (server)
   node          Node      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   nodeId        String
+}
+
+model GoogleWhitelist {
+  id        String        @id @default(cuid())
+  type      WhitelistType // Kolom baru untuk membedakan tipe
+  value     String        @unique // Menyimpan domain atau email
+  createdAt DateTime      @default(now())
+  addedById String
+  addedBy   User          @relation(fields: [addedById], references: [id])
 }
