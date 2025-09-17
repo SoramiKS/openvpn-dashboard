@@ -1,3 +1,4 @@
+// app/dashboard/profiles/ProfilesClient.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -14,16 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import { VpnUser, VpnCertificateStatus, NodeStatus } from "@prisma/client";
 import { useTableSorting } from "@/hooks/useTableSorting";
-import { ProfileTable } from "@/components/dashboard/ProfileTable"; // Impor komponen tabel baru
+import { ProfileTable } from "@/components/dashboard/ProfileTable";
 
-// Tipe data
-interface NodeForSelect {
-  id: string;
-  name: string;
-  ip: string;
-}
-type ExtendedVpnUser = VpnUser & { node: { name: string; status: NodeStatus } };
-type FilterState = {
+// Tipe data diekspor agar bisa digunakan oleh ProfileTable
+export type ExtendedVpnUser = VpnUser & { node: { name: string; status: NodeStatus } };
+export interface NodeForSelect { id: string; name: string; ip: string; }
+export type FilterState = {
   searchTerm: string;
   nodeId: string;
   status?: VpnCertificateStatus | "all";
@@ -32,44 +29,36 @@ type FilterState = {
 const PROFILES_PER_PAGE = 10;
 
 export default function ProfilesClient() {
-  // Hooks
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  // State untuk Data
   const [validProfiles, setValidProfiles] = useState<ExtendedVpnUser[]>([]);
   const [totalValid, setTotalValid] = useState(0);
   const [revokedProfiles, setRevokedProfiles] = useState<ExtendedVpnUser[]>([]);
   const [totalRevoked, setTotalRevoked] = useState(0);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
   const [isLoading, setIsLoading] = useState({ valid: true, revoked: true });
+  // PERBAIKAN: Tambahkan setIsSubmitting
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State untuk Filter
   const [validUsersFilter, setValidUsersFilter] = useState<Omit<FilterState, 'status'>>({ searchTerm: "", nodeId: "all" });
   const [revokedUsersFilter, setRevokedUsersFilter] = useState<FilterState>({ searchTerm: "", nodeId: "all", status: "all" });
-
-  // State untuk Pagination
   const [validUsersPage, setValidUsersPage] = useState(1);
   const [revokedUsersPage, setRevokedUsersPage] = useState(1);
-
-  // State dan Handler untuk Sorting
   const { sortBy: validSortBy, sortOrder: validSortOrder, handleSort: handleValidSort } = useTableSorting('username', 'asc');
   const { sortBy: revokedSortBy, sortOrder: revokedSortOrder, handleSort: handleRevokedSort } = useTableSorting('revocationDate', 'desc');
 
-  // State untuk Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newProfile, setNewProfile] = useState({ username: "", nodeId: "" });
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<{ id: string; username: string } | null>(null);
 
-  // Fungsi Data Fetching
   const fetchProfiles = useCallback(async (
     statusGroup: 'active' | 'revoked',
     page: number,
-    filters: any,
+    filters: Omit<FilterState, 'status'> | FilterState,
     sortBy: string,
     sortOrder: 'asc' | 'desc'
   ) => {
@@ -83,10 +72,9 @@ export default function ProfilesClient() {
       sortBy,
       sortOrder,
     });
-    if (filters.status && filters.status !== 'all') {
+    if ('status' in filters && filters.status && filters.status !== 'all') {
       params.append('status', filters.status);
     }
-
     try {
       const response = await fetch(`/api/profiles?${params.toString()}`);
       if (!response.ok) throw new Error(`Failed to fetch ${statusGroup} profiles.`);
@@ -115,7 +103,6 @@ export default function ProfilesClient() {
     }
   }, [toast]);
 
-  // useEffects untuk memicu data fetching
   useEffect(() => {
     fetchProfiles('active', validUsersPage, validUsersFilter, validSortBy, validSortOrder);
   }, [validUsersPage, validUsersFilter, validSortBy, validSortOrder, fetchProfiles]);
@@ -135,7 +122,6 @@ export default function ProfilesClient() {
     }
   }, [searchParams, session]);
 
-  // Fungsi-fungsi Aksi
   const handleAddProfile = async () => {
     if (!newProfile.username.trim() || !newProfile.nodeId) {
       return toast({ title: "Input Error", description: "Username and Node are required.", variant: "destructive" });
@@ -198,7 +184,6 @@ export default function ProfilesClient() {
     }
   };
 
-  // Kalkulasi Halaman
   const totalValidPages = Math.ceil(totalValid / PROFILES_PER_PAGE) || 1;
   const totalRevokedPages = Math.ceil(totalRevoked / PROFILES_PER_PAGE) || 1;
 
@@ -244,6 +229,8 @@ export default function ProfilesClient() {
         actions={{ onDownload: handleDownloadOvpn, onRevoke: handleRevokeClick, isSubmitting }}
         isRevokedTable={true}
       />
+
+      {/* PERBAIKAN: Hapus tabel duplikat dari sini */}
 
       {/* Dialogs */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>

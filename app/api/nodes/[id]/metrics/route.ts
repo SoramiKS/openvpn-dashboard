@@ -17,14 +17,20 @@ const OIDS = {
 
 type RawMetrics = { [key in keyof typeof OIDS]?: number };
 
+interface Varbind {
+  oid: string;
+  value: number | string | Buffer;
+}
+
 // --- FUNGSI HELPER 1: Mengambil data mentah dari SNMP ---
 async function fetchSnmpMetrics(node: Node): Promise<RawMetrics> {
-  // Buat peta terbalik untuk pencarian OID yang efisien (O(1))
   const oidToKeyMap = new Map(Object.entries(OIDS).map(([key, oid]) => [oid, key]));
 
   return new Promise((resolve, reject) => {
     const session = snmp.createSession(node.ip, node.snmpCommunity!, { timeout: 5000 });
-    session.get(Object.values(OIDS), (error: any, varbinds: any) => {
+
+    // PERBAIKAN: Ganti 'any' dengan tipe yang lebih spesifik
+    session.get(Object.values(OIDS), (error: Error | null, varbinds: Varbind[]) => {
       session.close();
       if (error) {
         return reject(new Error("Gagal menghubungi agen SNMP. Cek IP, community, atau firewall."));
@@ -34,10 +40,8 @@ async function fetchSnmpMetrics(node: Node): Promise<RawMetrics> {
       for (const vb of varbinds) {
         if (snmp.isVarbindError(vb)) {
           console.error("SNMP varbind error:", snmp.varbindError(vb));
-          continue; // Lanjut ke varbind berikutnya
+          continue;
         }
-
-        // Hapus loop bersarang dengan pencarian langsung di peta
         const key = oidToKeyMap.get(vb.oid);
         if (key) {
           const numericValue = Number(vb.value);
@@ -79,14 +83,18 @@ async function updateNodeMetricsInDb(nodeId: string, metrics: { cpuUsage: number
   }
 }
 
-// --- HANDLER UTAMA ---
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function GET(
+  request: NextRequest,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: any
+) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ message: "Akses ditolak" }, { status: 401 });
   }
 
-  const { id: nodeId } = params;
+  const { id: nodeId } = context.params;
   if (!nodeId) {
     return NextResponse.json({ message: "ID Node tidak ditemukan di URL." }, { status: 400 });
   }
@@ -98,17 +106,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: "Informasi IP atau SNMP Community belum diatur." }, { status: 400 });
     }
 
-    // Gunakan fungsi-fungsi helper
     const rawMetrics = await fetchSnmpMetrics(node);
     const calculatedMetrics = calculateUsage(rawMetrics);
-
-    // Update DB di latar belakang tanpa menunggu
-    updateNodeMetricsInDb(nodeId, calculatedMetrics);
 
     const response = {
       ...calculatedMetrics,
       lastUpdated: new Date().toISOString(),
     };
+
+    updateNodeMetricsInDb(nodeId, calculatedMetrics);
 
     return NextResponse.json(response);
   } catch (error) {

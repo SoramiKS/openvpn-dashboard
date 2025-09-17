@@ -17,33 +17,35 @@ import { useSession } from "next-auth/react";
 type ExtendedVpnUser = VpnUser & { node: { name: string; status: NodeStatus } };
 interface NodeForSelect { id: string; name: string; }
 
+type FilterState = {
+    searchTerm: string;
+    nodeId: string;
+    status?: VpnCertificateStatus | "all";
+};
+
 interface ProfileTableProps {
     title: string;
     profiles: ExtendedVpnUser[];
     isLoading: boolean;
     noDataMessage: string;
-    isRevokedTable?: boolean; // Parameter default sekarang di akhir
+    isRevokedTable?: boolean;
 
-    // Props untuk filter
-    filterState: any;
-    onFilterChange: (newFilter: any) => void;
+    filterState: Omit<FilterState, 'status'> | FilterState;
+    onFilterChange: (newFilter: Omit<FilterState, 'status'> | FilterState) => void;
     nodes: NodeForSelect[];
-    
-    // Props untuk pagination
+
     pagination: {
         currentPage: number;
         totalPages: number;
         setPage: (page: number) => void;
     };
 
-    // Props untuk sorting
     sorting: {
         sortBy: string;
         sortOrder: 'asc' | 'desc';
         onSort: (column: string) => void;
     };
 
-    // Props untuk aksi
     actions: {
         onDownload: (content: string | null | undefined, username: string) => void;
         onRevoke: (user: { id: string; username: string }) => void;
@@ -97,8 +99,14 @@ export const ProfileTable = ({
                             {nodes.map((node) => (<SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>))}
                         </SelectContent>
                     </Select>
-                    {isRevokedTable && (
-                        <Select value={filterState.status || "all"} onValueChange={(value) => { onFilterChange({ ...filterState, status: value }); pagination.setPage(1); }}>
+                    {isRevokedTable && 'status' in filterState && (
+                        <Select
+                            value={filterState.status || "all"}
+                            onValueChange={(value) => {
+                                onFilterChange({ ...filterState, status: value as VpnCertificateStatus | 'all' });
+                                pagination.setPage(1);
+                            }}
+                        >
                             <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
