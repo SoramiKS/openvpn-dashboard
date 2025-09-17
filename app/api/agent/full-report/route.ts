@@ -42,17 +42,70 @@ export async function POST(request: Request) {
     }
 
     // Use the specific 'Prisma.TransactionClient' type for the transaction object 'tx'
+    // Helper to map serviceStatus to NodeStatus
+    function mapNodeStatus(serviceStatus: string): NodeStatus {
+      if (serviceStatus === 'running') return NodeStatus.ONLINE;
+      if (serviceStatus === 'stopped') return NodeStatus.OFFLINE;
+      return NodeStatus.UNKNOWN;
+    }
+
+    // Helper to map agentProfile.status to VpnCertificateStatus
+    function mapVpnCertificateStatus(status: string): VpnCertificateStatus {
+      switch (status) {
+        case "VALID": return VpnCertificateStatus.VALID;
+        case "REVOKED": return VpnCertificateStatus.REVOKED;
+        case "EXPIRED": return VpnCertificateStatus.EXPIRED;
+        case "PENDING": return VpnCertificateStatus.PENDING;
+        default: return VpnCertificateStatus.UNKNOWN;
+      }
+    }
+
+    // Helper to upsert VPN users
+    async function upsertVpnUsers(tx: Prisma.TransactionClient, vpnProfiles: AgentReportRequestBody["vpnProfiles"], activeUsernamesFromAgent: Set<string>, serverId: string) {
+      const upsertPromises = vpnProfiles.map(agentProfile => {
+        const isCurrentlyActive = activeUsernamesFromAgent.has(agentProfile.username);
+        const newStatus = mapVpnCertificateStatus(agentProfile.status);
+        const commonData = {
+          status: newStatus,
+          serialNumber: agentProfile.serialNumber,
+          expirationDate: agentProfile.expirationDate ? new Date(agentProfile.expirationDate) : null,
+          revocationDate: agentProfile.revocationDate ? new Date(agentProfile.revocationDate) : null,
+          isActive: isCurrentlyActive,
+          ...(isCurrentlyActive && { lastConnected: new Date() }),
+        };
+        return tx.vpnUser.upsert({
+          where: { username: agentProfile.username },
+          update: commonData,
+          create: {
+            username: agentProfile.username,
+            nodeId: serverId,
+            ...commonData,
+            ovpnFileContent: null,
+            createdAt: new Date(),
+          },
+        });
+      });
+      await Promise.all(upsertPromises);
+    }
+
+    // Helper to mark inactive users
+    async function markInactiveUsers(tx: Prisma.TransactionClient, serverId: string, activeUsernamesFromAgent: Set<string>) {
+      const allUsersOnThisNodeAfterUpsert = await tx.vpnUser.findMany({
+        where: { nodeId: serverId },
+        select: { id: true, username: true, isActive: true },
+      });
+      const inactiveUpdates = allUsersOnThisNodeAfterUpsert
+        .filter(dbUser => !activeUsernamesFromAgent.has(dbUser.username) && dbUser.isActive)
+        .map(dbUser => tx.vpnUser.update({
+          where: { id: dbUser.id },
+          data: { isActive: false },
+        }));
+      await Promise.all(inactiveUpdates);
+    }
+
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Update Node Metrics
-      let mappedNodeStatus: NodeStatus;
-      if (serviceStatus === 'running') {
-        mappedNodeStatus = NodeStatus.ONLINE;
-      } else if (serviceStatus === 'stopped') {
-        mappedNodeStatus = NodeStatus.OFFLINE;
-      } else {
-        mappedNodeStatus = NodeStatus.UNKNOWN;
-      }
-
+      const mappedNodeStatus = mapNodeStatus(serviceStatus);
       await tx.node.update({
         where: { id: serverId },
         data: {
@@ -66,65 +119,13 @@ export async function POST(request: Request) {
 
       // 2. Synchronize VpnUser Profiles using upsert
       const activeUsernamesFromAgent = new Set(activeUsers);
-      const upsertPromises = [];
-
-      for (const agentProfile of vpnProfiles) {
-        const isCurrentlyActive = activeUsernamesFromAgent.has(agentProfile.username);
-        
-        let newStatus: VpnCertificateStatus = VpnCertificateStatus.UNKNOWN;
-        if (agentProfile.status === "VALID") {
-            newStatus = VpnCertificateStatus.VALID;
-        } else if (agentProfile.status === "REVOKED") {
-            newStatus = VpnCertificateStatus.REVOKED;
-        } else if (agentProfile.status === "EXPIRED") {
-            newStatus = VpnCertificateStatus.EXPIRED;
-        } else if (agentProfile.status === "PENDING") {
-            newStatus = VpnCertificateStatus.PENDING;
-        }
-
-        const commonData = {
-          status: newStatus,
-          serialNumber: agentProfile.serialNumber,
-          expirationDate: agentProfile.expirationDate ? new Date(agentProfile.expirationDate) : null,
-          revocationDate: agentProfile.revocationDate ? new Date(agentProfile.revocationDate) : null,
-          isActive: isCurrentlyActive,
-          ...(isCurrentlyActive && { lastConnected: new Date() }),
-        };
-
-        if (!serverId) {
-          throw new Error('serverId is required for creating a vpnUser');
-        }
-        upsertPromises.push(tx.vpnUser.upsert({
-          where: { username: agentProfile.username },
-          update: commonData,
-          create: {
-            username: agentProfile.username,
-            nodeId: serverId,
-            ...commonData,
-            ovpnFileContent: null,
-            createdAt: new Date(),
-          },
-        }));
+      if (!serverId) {
+        throw new Error('serverId is required for creating a vpnUser');
       }
-
-      await Promise.all(upsertPromises);
+      await upsertVpnUsers(tx, vpnProfiles, activeUsernamesFromAgent, serverId);
 
       // 3. Mark users in DB as inactive if they are NOT in agent's activeUsers list
-      const allUsersOnThisNodeAfterUpsert = await tx.vpnUser.findMany({
-        where: { nodeId: serverId },
-        select: { id: true, username: true, isActive: true },
-      });
-
-      const inactiveUpdates = [];
-      for (const dbUser of allUsersOnThisNodeAfterUpsert) {
-        if (!activeUsernamesFromAgent.has(dbUser.username) && dbUser.isActive) {
-          inactiveUpdates.push(tx.vpnUser.update({
-            where: { id: dbUser.id },
-            data: { isActive: false },
-          }));
-        }
-      }
-      await Promise.all(inactiveUpdates);
+      await markInactiveUsers(tx, serverId, activeUsernamesFromAgent);
     }); // End of transaction
 
     console.log(`Full report processed for server ${serverId}.`);

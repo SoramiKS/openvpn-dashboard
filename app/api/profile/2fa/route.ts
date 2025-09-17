@@ -21,7 +21,7 @@ export async function DELETE(req: Request) {
 
         const user = await prisma.user.findUnique({ where: { id: session.user.id } });
 
-        if (!user || !user.twoFactorSecret) {
+        if (!user?.twoFactorSecret) {
             return NextResponse.json({ message: '2FA is not enabled for this user.' }, { status: 400 });
         }
 
@@ -42,6 +42,7 @@ export async function DELETE(req: Request) {
         });
         return NextResponse.json({ message: '2FA disabled successfully' });
     } catch (_error) {
+        console.error('Error disabling 2FA:', _error);
         return NextResponse.json({ message: 'Failed to disable 2FA' }, { status: 500 });
     }
 }

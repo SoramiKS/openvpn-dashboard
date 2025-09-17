@@ -1,7 +1,7 @@
 // components/WebSocketProvider.tsx
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Node, NodeStatus } from "@prisma/client";
 
 // Tipe data payload dari backend
@@ -30,7 +30,30 @@ interface WSContextType {
 
 const WSContext = createContext<WSContextType | undefined>(undefined);
 
-export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+const updateNodesDataWithMessage = (prevNodes: Node[], msg: WSMessage): Node[] => {
+  if ('event' in msg && msg.event === "agent-status-change") {
+    return prevNodes.map(node =>
+      node.id === msg.payload.serverId
+        ? { ...node, status: msg.payload.status, lastSeen: new Date() }
+        : node
+    );
+  }
+  if ('type' in msg && msg.type === "NODE_STATUS_UPDATE") {
+    const { payload } = msg;
+    const updatedPayload = {
+      ...payload,
+      lastSeen: payload.lastSeen ? new Date(payload.lastSeen) : new Date(),
+    };
+    return prevNodes.map(node =>
+      node.id === updatedPayload.id
+        ? { ...node, ...updatedPayload }
+        : node
+    );
+  }
+  return prevNodes;
+};
+
+export const WebSocketProvider = ({ children }: { readonly children: React.ReactNode }) => {
   const [nodesData, setNodesData] = useState<Node[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<MessageEvent | null>(null);
@@ -73,30 +96,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
       setLastMessage(event);
       try {
         const msg: WSMessage = JSON.parse(event.data);
-
-        setNodesData(prevNodes => {
-          if ('event' in msg && msg.event === "agent-status-change") {
-            return prevNodes.map(node =>
-              node.id === msg.payload.serverId
-                ? { ...node, status: msg.payload.status, lastSeen: new Date() }
-                : node
-            );
-          }
-          if ('type' in msg && msg.type === "NODE_STATUS_UPDATE") {
-            const { payload } = msg;
-            const updatedPayload = {
-              ...payload,
-              lastSeen: payload.lastSeen ? new Date(payload.lastSeen) : new Date(),
-            };
-            return prevNodes.map(node =>
-              node.id === updatedPayload.id
-                ? { ...node, ...updatedPayload }
-                : node
-            );
-          }
-          return prevNodes;
-        });
-
+        // PENINGKATAN: Panggil fungsi helper agar tidak ada nesting berlebih
+        setNodesData(prevNodes => updateNodesDataWithMessage(prevNodes, msg));
       } catch (err) {
         console.error("Failed to parse WS message", err);
       }
@@ -105,8 +106,14 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     return () => ws.close();
   }, [fetchInitialNodes]);
 
+  const contextValue = useMemo(() => ({
+    nodesData,
+    isConnected,
+    lastMessage
+  }), [nodesData, isConnected, lastMessage]);
+
   return (
-    <WSContext.Provider value={{ nodesData, isConnected, lastMessage }}>
+    <WSContext.Provider value={contextValue}>
       {children}
     </WSContext.Provider>
   );

@@ -36,6 +36,7 @@ export async function POST(req: Request) {
         });
         return NextResponse.json(newEntry, { status: 201 });
     } catch (error) {
+        console.error("Failed to create google whitelist entry:", error);
         return NextResponse.json({ message: 'Value already exists.' }, { status: 409 });
     }
 }

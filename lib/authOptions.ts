@@ -45,7 +45,7 @@ export const authOptions: AuthOptions = {
           }
           const isValid = authenticator.check(credentials.twoFactorToken, user.twoFactorSecret);
           if (isValid) {
-            return { id: user.id, email: user.email!, role: user.role };
+            return { id: user.id, email: user.email, role: user.role };
           } else {
             throw new Error("Invalid 2FA token.");
           }
@@ -78,7 +78,7 @@ export const authOptions: AuthOptions = {
         }
 
         // Jika password valid dan 2FA tidak aktif, login seperti biasa
-        return { id: user.id, email: user.email!, role: user.role };
+        return { id: user.id, email: user.email, role: user.role };
       },
     }),
     // GoogleProvider tidak berubah
@@ -114,16 +114,14 @@ export const authOptions: AuthOptions = {
         }
 
         // Auto-create user in DB if not exists
-        let dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-        if (!dbUser) {
-          dbUser = await prisma.user.create({
+        let dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+        dbUser ??= await prisma.user.create({
             data: {
-              email: user.email!, // non-null
+              email: user.email, // non-null
               role: "USER",       // match your Prisma enum
               password: "",       // empty string for Google login
             },
           });
-        }
         user.id = dbUser.id;
         user.role = dbUser.role;
       }

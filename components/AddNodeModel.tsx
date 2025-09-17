@@ -12,11 +12,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import { useToast } from "@/hooks/use-toast" // PENINGKATAN: Impor useToast
-import { Loader2 } from "lucide-react" // PENINGKATAN: Impor Loader2 untuk feedback loading
+import { useToast } from "@/hooks/use-toast" 
+import { Loader2 } from "lucide-react" 
 
 type Props = {
-  onNodeAdded: () => void
+  readonly onNodeAdded: () => void
 }
 
 export function AddNodeModal({ onNodeAdded }: Props) {

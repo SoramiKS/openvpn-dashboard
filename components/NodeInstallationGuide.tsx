@@ -14,7 +14,8 @@ const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
         try {
             await navigator.clipboard.writeText(textToCopy);
             toast({ title: "Copied!", description: "Command has been copied to clipboard." });
-        } catch (_err) {
+        } catch (err) {
+            console.error("Clipboard copy failed:", err);
             toast({ title: "Error", description: "Could not copy to clipboard.", variant: "destructive" });
         }
     };
@@ -38,11 +39,11 @@ const CommandDisplay = ({ title, command }: { title: string; command: string }) 
 
 
 interface NodeInstallationGuideProps {
-    nodeName: string;
-    serverId: string;
-    apiKey: string;
-    dashboardUrl: string;
-    onFinish: () => void;
+    readonly nodeName: string;
+    readonly serverId: string;
+    readonly apiKey: string;
+    readonly dashboardUrl: string;
+    readonly onFinish: () => void;
 }
 
 export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl, onFinish }: NodeInstallationGuideProps) {

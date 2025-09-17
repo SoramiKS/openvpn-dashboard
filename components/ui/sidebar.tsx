@@ -53,8 +53,10 @@ export function Sidebar({ className, onLinkClick }: SidebarProps) {
       <div className={cn("space-y-4 py-4 px-3", className)}>
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
             <Skeleton key={i} className="h-10 w-full" />
           ))}
+
         </div>
       </div>
     );

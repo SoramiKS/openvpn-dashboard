@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
         });
 
     } catch (error) {
+        console.error('Error generating CSV file:', error);
         return NextResponse.json({ message: 'Failed to generate CSV file.' }, { status: 500 });
     }
 }

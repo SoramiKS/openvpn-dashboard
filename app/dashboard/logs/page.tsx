@@ -232,11 +232,14 @@ export default function LogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading.action ? (
+              {/* PERBAIKAN: Ganti nested ternary dengan kondisional yang lebih jelas */}
+              {isLoading.action && (
                 <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
-              ) : actionLogs.length === 0 ? (
+              )}
+              {!isLoading.action && actionLogs.length === 0 && (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">No logs found.</TableCell></TableRow>
-              ) : (
+              )}
+              {!isLoading.action && actionLogs.length > 0 && (
                 actionLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
@@ -310,7 +313,8 @@ export default function LogsPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={vpnActivityLogFilter.startDate} onSelect={(date) => { setVpnActivityLogPage(1); setVpnActivityLogFilter((prev) => ({ ...prev, startDate: date || undefined })); }} initialFocus />
+
+                <Calendar mode="single" selected={vpnActivityLogFilter.startDate} onSelect={(date) => { setVpnActivityLogPage(1); setVpnActivityLogFilter((prev) => ({ ...prev, startDate: date || undefined })); }} />
               </PopoverContent>
             </Popover>
             <Popover>
@@ -321,7 +325,8 @@ export default function LogsPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={vpnActivityLogFilter.endDate} onSelect={(date) => { setVpnActivityLogPage(1); setVpnActivityLogFilter((prev) => ({ ...prev, endDate: date || undefined })); }} initialFocus />
+
+                <Calendar mode="single" selected={vpnActivityLogFilter.endDate} onSelect={(date) => { setVpnActivityLogPage(1); setVpnActivityLogFilter((prev) => ({ ...prev, endDate: date || undefined })); }} />
               </PopoverContent>
             </Popover>
             <Button
@@ -351,11 +356,13 @@ export default function LogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading.activity ? (
+              {isLoading.activity && (
                 <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></TableCell></TableRow>
-              ) : vpnActivityLogs.length === 0 ? (
+              )}
+              {!isLoading.activity && vpnActivityLogs.length === 0 && (
                 <TableRow><TableCell colSpan={8} className="text-center py-8">No activity found.</TableCell></TableRow>
-              ) : (
+              )}
+              {!isLoading.activity && vpnActivityLogs.length > 0 && (
                 vpnActivityLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>

@@ -30,6 +30,7 @@ export async function GET() {
 
         return NextResponse.json(user);
     } catch (_error) {
+        console.error('Error in GET /api/profile:', _error);
         return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
 }
@@ -72,6 +73,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ message: 'Password updated successfully' });
 
     } catch (_error) {
+        console.error('Error in PATCH /api/profile:', _error);
         return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
 }

@@ -1,8 +1,7 @@
 // app/api/agent/action-logs/complete/route.ts
-import { ActionStatus, ActionType } from '@prisma/client';
+import { Prisma, ActionStatus, ActionType } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client'; // Import the Prisma namespace
 
 interface CompleteActionRequestBody {
   actionLogId: string;
@@ -84,15 +83,29 @@ export async function POST(req: Request) {
 
     // Check if the error is a known Prisma error
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        return NextResponse.json(
-            { message: `A unique constraint violation occurred: ${error.meta?.target || 'unknown field'}.`, error: error.message },
-            { status: 409 }
-        );
+      let target: string;
+
+      if (Array.isArray(error.meta?.target)) {
+        target = error.meta?.target.join(", ");
+      } else if (typeof error.meta?.target === "string") {
+        target = error.meta?.target;
+      } else {
+        target = "unknown field";
+      }
+
+      return NextResponse.json(
+        {
+          message: `A unique constraint violation occurred: ${target}.`,
+          error: error.message,
+        },
+        { status: 409 }
+      );
     }
-    
+
+
     // Check if it's a standard Error object
     if (error instanceof Error) {
-        return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
+      return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
     }
 
     // Fallback for unknown errors

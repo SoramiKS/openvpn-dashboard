@@ -55,15 +55,19 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          {needsSetup === null ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : needsSetup ? (
-            <SetupForm />
-          ) : (
-            <LoginForm />
-          )}
+          {(() => {
+            if (needsSetup === null) {
+              return (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              );
+            } else if (needsSetup) {
+              return <SetupForm />;
+            } else {
+              return <LoginForm />;
+            }
+          })()}
         </CardContent>
       </Card>
 

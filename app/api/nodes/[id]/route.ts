@@ -63,13 +63,16 @@ export async function DELETE(request: NextRequest) {
 
     // --- TAMBAHKAN BLOK INI ---
     // Buat log SEBELUM melakukan aksi hapus
+    if (!session || !session.user || !session.user.id) {
+      return NextResponse.json({ message: "Session or user ID not found." }, { status: 401 });
+    }
     await prisma.actionLog.create({
       data: {
         action: ActionType.DELETE_NODE,
         status: ActionStatus.COMPLETED,
         details: `Deletion initiated for node '${node.name}'.`,
         nodeId: nodeIdToDelete,
-        initiatorId: session!.user!.id, // Kita tahu sesi ada dari checkAdminSession
+        initiatorId: session.user.id, // Kita tahu sesi ada dari checkAdminSession
         nodeNameSnapshot: node.name,
       }
     });

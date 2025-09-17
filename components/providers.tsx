@@ -7,7 +7,7 @@ import { IdleSessionProvider } from "@/components/IdleSessionProvider";
 import { WebSocketProvider } from "@/components/WebSocketProvider";
 import { Toaster } from "@/components/ui/toaster";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <SessionProvider>
       <ThemeProvider

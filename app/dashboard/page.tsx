@@ -514,15 +514,19 @@ export default function DashboardPage() {
                             className="flex items-start space-x-3"
                           >
                             <div className="flex-shrink-0">
-                              <div
-                                className={`h-2 w-2 rounded-full mt-1.5 ${
-                                  logAction === "CONNECT"
-                                    ? "bg-green-500"
-                                    : logAction === "DISCONNECT"
-                                    ? "bg-gray-400"
-                                    : "bg-blue-500"
-                                }`}
-                              ></div>
+                              {(() => {
+                                let bgColor = "bg-blue-500";
+                                if (logAction === "CONNECT") {
+                                  bgColor = "bg-green-500";
+                                } else if (logAction === "DISCONNECT") {
+                                  bgColor = "bg-gray-400";
+                                }
+                                return (
+                                  <div
+                                    className={`h-2 w-2 rounded-full mt-1.5 ${bgColor}`}
+                                  ></div>
+                                );
+                              })()}
                             </div>
                             <div className="text-sm">
                               {isActionLog ? (

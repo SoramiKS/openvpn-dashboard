@@ -121,6 +121,12 @@ export const LoginForm = () => {
     }
   };
 
+  // Extracted button text logic
+  let buttonText = "Sign In";
+  if (showTwoFactorInput) {
+    buttonText = "Verify Code";
+  }
+
   return (
     <form onSubmit={handleLoginSubmit} className="space-y-6">
       {/* Step 2FA or Normal Login */}
@@ -202,10 +208,8 @@ export const LoginForm = () => {
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying...
           </>
-        ) : showTwoFactorInput ? (
-          "Verify Code"
         ) : (
-          "Sign In"
+          buttonText
         )}
       </Button>
 

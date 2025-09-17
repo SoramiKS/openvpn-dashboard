@@ -89,8 +89,8 @@ interface NodeFormInput {
 }
 
 interface NodesClientPageProps {
-  apiKey: string;
-  dashboardUrl: string;
+  readonly apiKey: string;
+  readonly dashboardUrl: string;
 }
 
 export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPageProps) {
@@ -329,7 +329,7 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie data={nodeStats.statusChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
-                        {nodeStats.statusChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS] || "#cccccc"} stroke={COLORS[entry.name as keyof typeof COLORS] || "#cccccc"} />)}
+                        {nodeStats.statusChartData.map((entry) => <Cell key={entry.name} fill={COLORS[entry.name as keyof typeof COLORS] || "#cccccc"} stroke={COLORS[entry.name as keyof typeof COLORS] || "#cccccc"} />)}
                       </Pie>
                       <Tooltip />
                     </PieChart>
@@ -431,22 +431,61 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                         {editingNodeId === node.id ? <Input name="location" value={editedNode?.location || ""} onChange={handleEditChange} disabled={isSubmitting} /> : <>{node.flag} {node.location}</>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={node.status === NodeStatus.ONLINE ? "default" : node.status === NodeStatus.OFFLINE ? "destructive" : "secondary"}>{node.status}</Badge>
+                        {(() => {
+                          let badgeVariant: "default" | "destructive" | "secondary";
+                          if (node.status === NodeStatus.ONLINE) {
+                            badgeVariant = "default";
+                          } else if (node.status === NodeStatus.OFFLINE) {
+                            badgeVariant = "destructive";
+                          } else {
+                            badgeVariant = "secondary";
+                          }
+                          return <Badge variant={badgeVariant}>{node.status}</Badge>;
+                        })()}
                       </TableCell>
                       <TableCell>
                         {node.status === NodeStatus.ONLINE ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.cpuUsage > 80 ? "bg-red-500" : node.cpuUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.cpuUsage}%` }}></div></div>
-                            <span className="text-sm">{node.cpuUsage}%</span>
-                          </div>
-                        ) : (<span className="text-gray-400">N/A</span>)}
+                          (() => {
+                            let cpuColorClass = "bg-green-500";
+                            if (node.cpuUsage > 80) {
+                              cpuColorClass = "bg-red-500";
+                            } else if (node.cpuUsage > 60) {
+                              cpuColorClass = "bg-yellow-500";
+                            }
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${cpuColorClass}`}
+                                    style={{ width: `${node.cpuUsage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-sm">{node.cpuUsage}%</span>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {node.status === NodeStatus.ONLINE ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`h-2 rounded-full ${node.ramUsage > 80 ? "bg-red-500" : node.ramUsage > 60 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${node.ramUsage}%` }}></div></div>
-                            <span className="text-sm">{node.ramUsage}%</span>
-                          </div>
+                          (() => {
+                            let ramColorClass = "bg-green-500";
+                            if (node.ramUsage > 80) {
+                              ramColorClass = "bg-red-500";
+                            } else if (node.ramUsage > 60) {
+                              ramColorClass = "bg-yellow-500";
+                            }
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div className={`h-2 rounded-full ${ramColorClass}`} style={{ width: `${node.ramUsage}%` }}></div>
+                                </div>
+                                <span className="text-sm">{node.ramUsage}%</span>
+                              </div>
+                            );
+                          })()
                         ) : (<span className="text-gray-400">N/A</span>)}
                       </TableCell>
                       <TableCell>{node.lastSeen ? node.lastSeen.toLocaleString('id-ID') : "Never"}</TableCell>

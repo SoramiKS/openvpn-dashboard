@@ -68,7 +68,17 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { email, password, role } = body;
 
-        // TODO: add validation if needed
+        // Basic validation for email, password, and role
+        if (!email || typeof email !== 'string' || !email.includes('@')) {
+            return NextResponse.json({ message: 'Invalid or missing email.' }, { status: 400 });
+        }
+        if (!password || typeof password !== 'string' || password.length < 6) {
+            return NextResponse.json({ message: 'Password must be at least 6 characters.' }, { status: 400 });
+        }
+        if (!role || !['ADMIN', 'USER'].includes(role)) {
+            return NextResponse.json({ message: 'Invalid or missing role.' }, { status: 400 });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         
         const newUser = await prisma.user.create({

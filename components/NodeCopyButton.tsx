@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react"; // Impor ikon Check
 import { useToast } from "@/hooks/use-toast";
 
-export default function NodeCopyButton({ nodeId }: { nodeId: string }) {
+export default function NodeCopyButton({ nodeId }: Readonly<{ nodeId: string }>) {
     const [isCopied, setIsCopied] = useState(false);
     const { toast } = useToast();
 

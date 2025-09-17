@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
         const user = await prisma.user.findUnique({ where: { id: session.user.id }});
 
-        if (!user || !user.twoFactorSecret) {
+        if (!user?.twoFactorSecret) {
             return NextResponse.json({ message: '2FA is not set up for this user' }, { status: 400 });
         }
         
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ message: '2FA enabled successfully!' });
     } catch (_error) {
+        console.error('2FA verification error:', _error);
         return NextResponse.json({ message: 'Failed to verify 2FA token' }, { status: 500 });
     }
 }

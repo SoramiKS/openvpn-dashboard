@@ -3,9 +3,8 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { ActionStatus, ActionType, NodeStatus } from "@prisma/client";
+import { ActionStatus, ActionType, NodeStatus, Prisma } from "@prisma/client";
 import { randomBytes } from 'crypto';
-import { Prisma } from "@prisma/client";
 import { subMinutes } from "date-fns";
 
 const OFFLINE_THRESHOLD_MS = 90 * 1000; // Consider offline if no report > 90 seconds
@@ -14,19 +13,20 @@ const DELETION_CLEANUP_MINUTES = 1; // Permanently delete after 1 minute
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ message: 'Access denied' }, { status: 401 });
     }
+
 
     // 1. Run cleanup for nodes that are being deleted
     const deletionThreshold = subMinutes(new Date(), DELETION_CLEANUP_MINUTES);
     await prisma.node.deleteMany({
-        where: {
-            status: NodeStatus.DELETING,
-            deletionStartedAt: {
-                lt: deletionThreshold // Older than the threshold
-            }
+      where: {
+        status: NodeStatus.DELETING,
+        deletionStartedAt: {
+          lt: deletionThreshold // Older than the threshold
         }
+      }
     });
 
     // 2. Fetch list of "active" nodes (not being deleted)
@@ -62,12 +62,12 @@ export async function GET() {
 
     // 5. Fetch final cleaned and updated data to return
     const finalNodes = await prisma.node.findMany({
-        where: {
-            status: {
-                not: NodeStatus.DELETING
-            }
-        },
-        orderBy: { name: 'asc' },
+      where: {
+        status: {
+          not: NodeStatus.DELETING
+        }
+      },
+      orderBy: { name: 'asc' },
     });
 
     return NextResponse.json(finalNodes, { status: 200 });
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-        // --- TAMBAHKAN BLOK INI ---
+    // --- TAMBAHKAN BLOK INI ---
     // Membuat log audit setelah node berhasil dibuat
     await prisma.actionLog.create({
       data: {
