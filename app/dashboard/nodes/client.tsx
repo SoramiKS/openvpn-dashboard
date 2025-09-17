@@ -63,6 +63,7 @@ import { useWS } from "@/components/WebSocketProvider";
 import countryEmoji from "country-emoji";
 import { useTableSorting } from "@/hooks/useTableSorting";
 import { SortableHeader } from "@/components/SortableHeader";
+import { useSession } from "next-auth/react";
 
 const getFlagFromLocation = (location: string | null) => {
   if (!location) return "🏳️";
@@ -114,6 +115,7 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(null);
   const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null);
+  const { data: session } = useSession();
 
   // BARU: useEffect ini menyinkronkan data dari provider ke state lokal
   useEffect(() => {
@@ -305,9 +307,11 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
           <h1 className="text-3xl font-bold">Nodes</h1>
           <p className="text-gray-600">Manage and monitor your OpenVPN server nodes</p>
         </div>
-        <Button onClick={() => { setNewNode({ name: "", ip: "", location: "", snmpCommunity: "public" }); setIsAddModalOpen(true); }} className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
-          <Plus className="h-4 w-4 mr-2" /> Add Node
-        </Button>
+        {session?.user?.role === 'ADMIN' && (
+          <Button onClick={() => { setNewNode({ name: "", ip: "", location: "", snmpCommunity: "public" }); setIsAddModalOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Node
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -470,31 +474,33 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
         </CardContent>
       </Card>
 
-      {/* Dialogs tidak berubah */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader><DialogTitle>Add New Node</DialogTitle><DialogDescription>Enter the details for the new server node. After saving, you will be guided through the installation.</DialogDescription></DialogHeader>
-          <form onSubmit={handleProceedToGuide}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name</Label><Input id="name" value={newNode.name} onChange={(e) => setNewNode({ ...newNode, name: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-              <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="ip" className="text-right">IP Address</Label><Input id="ip" value={newNode.ip} onChange={(e) => setNewNode({ ...newNode, ip: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-              <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="location" className="text-right">Location</Label><Input id="location" value={newNode.location} onChange={(e) => setNewNode({ ...newNode, location: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-              <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="snmpCommunity" className="text-right">SNMP Community</Label><Input id="snmpCommunity" value={newNode.snmpCommunity} onChange={(e) => setNewNode({ ...newNode, snmpCommunity: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-            </div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting && (<Loader2 className="mr-2 h-4 w-4 animate-spin" />)} Proceed to Guide</Button></DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isGuideModalOpen} onOpenChange={(isOpen) => { setIsGuideModalOpen(isOpen); if (!isOpen) setNodeForGuide(null); }}>
-        <DialogContent className="max-w-3xl">{nodeForGuide && (<NodeInstallationGuide nodeName={nodeForGuide.name} serverId={nodeForGuide.id} apiKey={apiKey} dashboardUrl={dashboardUrl} onFinish={() => setIsGuideModalOpen(false)} />)}</DialogContent>
-      </Dialog>
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Confirm Deletion</DialogTitle><DialogDescription>Are you sure you want to delete the node <span className="font-bold">{nodeToDelete?.name}</span>? This action will send a command to the agent to remove itself and cannot be undone.</DialogDescription></DialogHeader>
-          <DialogFooter><Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDelete} disabled={isSubmitting}>{isSubmitting && (<Loader2 className="mr-2 h-4 w-4 animate-spin" />)} Yes, Delete</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {session?.user?.role === 'ADMIN' && (
+        <>
+          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader><DialogTitle>Add New Node</DialogTitle><DialogDescription>Enter the details for the new server node. After saving, you will be guided through the installation.</DialogDescription></DialogHeader>
+              <form onSubmit={handleProceedToGuide}>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name</Label><Input id="name" value={newNode.name} onChange={(e) => setNewNode({ ...newNode, name: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="ip" className="text-right">IP Address</Label><Input id="ip" value={newNode.ip} onChange={(e) => setNewNode({ ...newNode, ip: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="location" className="text-right">Location</Label><Input id="location" value={newNode.location} onChange={(e) => setNewNode({ ...newNode, location: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="snmpCommunity" className="text-right">SNMP Community</Label><Input id="snmpCommunity" value={newNode.snmpCommunity} onChange={(e) => setNewNode({ ...newNode, snmpCommunity: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
+                </div>
+                <DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting && (<Loader2 className="mr-2 h-4 w-4 animate-spin" />)} Proceed to Guide</Button></DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isGuideModalOpen} onOpenChange={(isOpen) => { setIsGuideModalOpen(isOpen); if (!isOpen) setNodeForGuide(null); }}>
+            <DialogContent className="max-w-3xl">{nodeForGuide && (<NodeInstallationGuide nodeName={nodeForGuide.name} serverId={nodeForGuide.id} apiKey={apiKey} dashboardUrl={dashboardUrl} onFinish={() => setIsGuideModalOpen(false)} />)}</DialogContent>
+          </Dialog>
+          <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Confirm Deletion</DialogTitle><DialogDescription>Are you sure you want to delete the node <span className="font-bold">{nodeToDelete?.name}</span>? This action will send a command to the agent to remove itself and cannot be undone.</DialogDescription></DialogHeader>
+              <DialogFooter><Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDelete} disabled={isSubmitting}>{isSubmitting && (<Loader2 className="mr-2 h-4 w-4 animate-spin" />)} Yes, Delete</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
       <Toaster />
     </div>
   );

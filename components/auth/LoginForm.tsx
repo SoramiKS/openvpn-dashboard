@@ -31,7 +31,7 @@ export const LoginForm = () => {
     const error = searchParams.get("error");
     if (error) {
       toast({
-        title: "Login Gagal",
+        title: "Login Failed",
         description: decodeURIComponent(error),
         variant: "destructive",
       });

@@ -40,7 +40,7 @@ export default function LoginPage() {
       {/* Card utama */}
       <Card className="w-full max-w-md shadow-xl rounded-2xl border">
         <CardHeader className="text-center p-6 border-b space-y-4">
-          <div className="flex justify-center">
+          <div className="flex justify-center rounded-full">
             <Image
               src="/logo.svg"
               alt="Logo"

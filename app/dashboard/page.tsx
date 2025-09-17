@@ -290,7 +290,7 @@ export default function DashboardPage() {
               </Link>
             </Card>
             <Card className="hover:shadow-xl hover:scale-105 duration-200 transition-transform">
-              <Link href="/dashboard/users">
+              <Link href="/dashboard/profiles">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">
                     Active Sessions
