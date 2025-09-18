@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 // 1. Impor ikon Eye dan EyeOff
-import { Loader2, Trash2, Eye, EyeOff, Plus } from "lucide-react";
+import { Loader2, Trash2, Eye, EyeOff, Plus, Edit } from "lucide-react";
 import { AddUserDialog } from "@/components/admin/add-user-dialog";
 import { useSession } from "next-auth/react";
 import { Role, User, WhitelistType } from "@prisma/client";
@@ -57,7 +57,6 @@ type WhitelistEntry = {
   createdAt: string;
 };
 
-
 type SafeUser = Omit<User, "password">;
 const USERS_PER_PAGE = 10;
 
@@ -68,7 +67,7 @@ type EditDataState = {
 };
 
 export default function UserManagementPage() {
-  useSession();
+  const { data: session } = useSession();
   const [users, setUsers] = useState<SafeUser[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,11 +84,16 @@ export default function UserManagementPage() {
   const fetchWhitelist = useCallback(async () => {
     setIsWhitelistLoading(true);
     try {
-      const res = await fetch('/api/admin/google-whitelist');
+      const res = await fetch("/api/admin/google-whitelist");
       if (!res.ok) throw new Error("Failed to fetch whitelist");
       setWhitelist(await res.json());
     } catch (error) {
-      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error instanceof Error)
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
     } finally {
       setIsWhitelistLoading(false);
     }
@@ -98,18 +102,27 @@ export default function UserManagementPage() {
   const handleAddWhitelist = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/admin/google-whitelist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/google-whitelist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: newValue, type: newType }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast({ title: "Success", description: `${newType.charAt(0) + newType.slice(1).toLowerCase()} '${data.value}' has been added.` });
+      toast({
+        title: "Success",
+        description: `${newType.charAt(0) + newType.slice(1).toLowerCase()} '${data.value
+          }' has been added.`,
+      });
       setNewValue("");
       fetchWhitelist();
     } catch (error) {
-      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error instanceof Error)
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
     } finally {
       setIsSubmitting(false);
     }
@@ -118,12 +131,19 @@ export default function UserManagementPage() {
   const handleDeleteWhitelist = async (id: string) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/google-whitelist/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/google-whitelist/${id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error((await res.json()).message);
       toast({ title: "Success", description: "Entry has been removed." });
       fetchWhitelist();
     } catch (error) {
-      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error instanceof Error)
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
     } finally {
       setIsSubmitting(false);
     }
@@ -188,7 +208,21 @@ export default function UserManagementPage() {
     setCurrentPage(1);
   }, [filters]);
 
+  const handleEditClick = (user: SafeUser) => {
+    setUserToEdit(user);
 
+    setEditData({
+      role: user.role,
+
+      currentPassword: "",
+
+      newPassword: "",
+    });
+
+    // Reset visibilitas password saat dialog dibuka
+
+    setPasswordVisibility({ current: false, new: false });
+  };
 
   const handleUpdateUser = async () => {
     if (!userToEdit) return;
@@ -257,6 +291,10 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleDeleteClick = (user: SafeUser) => {
+    setUserToDelete(user);
+  };
+
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
     setIsSubmitting(true);
@@ -307,9 +345,7 @@ export default function UserManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-gray-600">
-            Add, view, and manage system users.
-          </p>
+          <p className="text-gray-600">Add, view, and manage system users.</p>
         </div>
         <AddUserDialog onUserAdded={() => fetchUsers(1)} />
       </div>
@@ -317,18 +353,27 @@ export default function UserManagementPage() {
       <Card className="mt-8">
         <CardHeader>
           <h2 className="text-2xl font-bold">Google Sign-In Whitelist</h2>
-          <p className="text-muted-foreground">Manage specific domains or individual emails allowed to sign in.</p>
+          <p className="text-muted-foreground">
+            Manage specific domains or individual emails allowed to sign in.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Input
-              placeholder={newType === 'DOMAIN' ? 'e.g., example.com' : 'e.g., user@email.com'}
+              placeholder={
+                newType === "DOMAIN"
+                  ? "e.g., example.com"
+                  : "e.g., user@email.com"
+              }
               value={newValue}
-              onChange={e => setNewValue(e.target.value)}
+              onChange={(e) => setNewValue(e.target.value)}
               className="flex-grow"
             />
             <div className="flex gap-2">
-              <Select value={newType} onValueChange={(v) => setNewType(v as WhitelistType)}>
+              <Select
+                value={newType}
+                onValueChange={(v) => setNewType(v as WhitelistType)}
+              >
                 <SelectTrigger className="w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -337,8 +382,15 @@ export default function UserManagementPage() {
                   <SelectItem value={WhitelistType.EMAIL}>Email</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={handleAddWhitelist} disabled={isSubmitting || !newValue.trim()}>
-                {isSubmitting && !isWhitelistLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              <Button
+                onClick={handleAddWhitelist}
+                disabled={isSubmitting || !newValue.trim()}
+              >
+                {isSubmitting && !isWhitelistLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
                 Add
               </Button>
             </div>
@@ -355,32 +407,47 @@ export default function UserManagementPage() {
             </TableHeader>
             <TableBody>
               {/* PERBAIKAN: Ganti nested ternary dengan kondisional yang lebih jelas */}
-              {isLoading && (
+              {isWhitelistLoading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                  <TableCell colSpan={4} className="text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && users.length === 0 && (
+              {!isWhitelistLoading && whitelist.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
-                    No users found.
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
+                    Whitelist is empty. All Google sign-ins are currently
+                    blocked.
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && users.length > 0 && (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell><Badge variant={user.role === Role.ADMIN ? "default" : "secondary"}>{user.role}</Badge></TableCell>
-                    <TableCell>{new Date(user.createdAt).toLocaleString()}</TableCell>
+              {!isWhitelistLoading &&
+                whitelist.length > 0 &&
+                whitelist.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Badge variant="outline">{item.type}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono">{item.value}</TableCell>
+                    <TableCell>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </TableCell>
                     <TableCell className="text-right">
-                      {/* ... (Tombol aksi tidak berubah) ... */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteWhitelist(item.id)}
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -426,26 +493,63 @@ export default function UserManagementPage() {
             </TableHeader>
             <TableBody>
               {/* PERBAIKAN: Ganti nested ternary dengan kondisional yang lebih jelas */}
-              {isWhitelistLoading && (
-                <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
               )}
-              {!isWhitelistLoading && whitelist.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Whitelist is empty. All Google sign-ins are currently blocked.</TableCell></TableRow>
+              {!isLoading && users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    No users found.
+                  </TableCell>
+                </TableRow>
               )}
-              {!isWhitelistLoading && whitelist.length > 0 && (
-                whitelist.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
-                    <TableCell className="font-mono">{item.value}</TableCell>
-                    <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+              {!isLoading &&
+                users.length > 0 &&
+                users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          user.role === Role.ADMIN ? "default" : "secondary"
+                        }
+                      >
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.createdAt).toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteWhitelist(item.id)} disabled={isSubmitting}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditClick(user)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500"
+                        onClick={() => handleDeleteClick(user)}
+                        disabled={session?.user?.id === user.id}
+                        title={
+                          session?.user?.id === user.id
+                            ? "Cannot delete yourself"
+                            : "Delete User"
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -579,7 +683,6 @@ export default function UserManagementPage() {
                 </button>
               </div>
             </div>
-
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUserToEdit(null)}>
