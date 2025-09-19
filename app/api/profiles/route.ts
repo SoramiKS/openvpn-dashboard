@@ -1,10 +1,8 @@
-// app/api/profiles/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
-import { Prisma, VpnCertificateStatus } from '@prisma/client';
+import { Prisma, VpnCertificateStatus, ActionType, ActionStatus } from '@prisma/client';
 
 const getStatusGroup = (group: string | null) => {
     if (group === 'active') {
@@ -50,10 +48,8 @@ export async function GET(req: NextRequest) {
 
         let orderBy: Prisma.VpnUserOrderByWithRelationInput = {};
         if (sortBy === 'node.name') {
-            // Kasus khusus jika sorting berdasarkan nama node (relasi)
             orderBy = { node: { name: sortOrder as Prisma.SortOrder } };
         } else {
-            // Daftar kolom yang diizinkan untuk sorting untuk keamanan
             const allowedSortBy = ['username', 'status', 'isActive', 'expirationDate', 'createdAt', 'lastConnected', 'revocationDate'];
             if (allowedSortBy.includes(sortBy)) {
                 orderBy = { [sortBy]: sortOrder as Prisma.SortOrder };
@@ -64,7 +60,6 @@ export async function GET(req: NextRequest) {
             where.nodeId = nodeId;
         }
 
-        // DIUBAH: Logika filter status sekarang opsional
         if (specificStatus && specificStatus !== 'all') {
             where.status = specificStatus as VpnCertificateStatus;
         } else if (statuses.length > 0) {
@@ -79,7 +74,6 @@ export async function GET(req: NextRequest) {
                 ...(statusGroup && { skip, take: pageSize }),
                 orderBy,
                 select: {
-                    // ... (select tidak berubah)
                     id: true,
                     username: true,
                     nodeId: true,
@@ -96,9 +90,54 @@ export async function GET(req: NextRequest) {
             prisma.vpnUser.count({ where }),
         ]);
 
-        return NextResponse.json({ data: vpnUsers, total: totalUsers }, { status: 200 });
+        return NextResponse.json({ data: vpnUsers, total: totalUsers });
     } catch (error: unknown) {
         console.error('Error fetching VPN profiles:', error);
+        return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    }
+}
+
+// --- TAMBAHKAN BLOK INI ---
+export async function POST(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id || session.user.role !== 'ADMIN') {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
+
+        const { username, nodeId }: { username: string; nodeId: string } = await req.json();
+        const normalizedUsername = username.toLowerCase().replace(/[^a-z0-9.-]/g, '');
+
+        if (!normalizedUsername || !nodeId) {
+            return NextResponse.json({ message: 'Username and Node ID are required.' }, { status: 400 });
+        }
+
+        const existingVpnUser = await prisma.vpnUser.findUnique({
+            where: { username: normalizedUsername },
+        });
+        if (existingVpnUser) {
+            return NextResponse.json({ message: `VPN profile for '${username}' already exists.` }, { status: 409 });
+        }
+
+        const targetNode = await prisma.node.findUnique({ where: { id: nodeId } });
+        if (!targetNode) {
+            return NextResponse.json({ message: 'Node not found' }, { status: 404 });
+        }
+
+        const actionLog = await prisma.actionLog.create({
+            data: {
+                action: ActionType.CREATE_USER,
+                nodeId: nodeId,
+                details: normalizedUsername,
+                status: ActionStatus.PENDING,
+                initiatorId: session.user.id,
+                nodeNameSnapshot: targetNode.name,
+            },
+        });
+
+        return NextResponse.json({ message: 'VPN profile creation request submitted.', actionLogId: actionLog.id }, { status: 202 });
+    } catch (error: unknown) {
+        console.error('Error submitting VPN profile creation request:', error);
         return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
 }
