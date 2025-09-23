@@ -108,6 +108,13 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
                                 </div>
                                 <CopyButton textToCopy={apiKey} />
                             </div>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="text-sm font-medium">Server ID:</p>
+                                    <code className="text-sm text-blue-600 dark:text-blue-400 font-mono">{serverId}</code>
+                                </div>
+                                <CopyButton textToCopy={serverId} />
+                            </div>
                             <div>
                                 <p className="text-sm font-medium mb-2">Dashboard API Address:</p>
                                 <div className="pl-4 border-l-2">
@@ -132,13 +139,7 @@ export function NodeInstallationGuide({ nodeName, serverId, apiKey, dashboardUrl
                                     )}
                                 </div>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-medium">Server ID:</p>
-                                    <code className="text-sm text-blue-600 dark:text-blue-400 font-mono">{serverId}</code>
-                                </div>
-                                <CopyButton textToCopy={serverId} />
-                            </div>
+
                         </div>
                         <p className="text-sm text-muted-foreground pt-2">Once all inputs are filled in, the script will complete the installation. Your node will soon connect to the dashboard.</p>
                     </div>

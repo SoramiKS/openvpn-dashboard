@@ -1,7 +1,7 @@
 // app/dashboard/nodes/client.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -81,11 +81,11 @@ const COLORS: { [key in NodeStatus]?: string } = {
   DELETING: "#e11d48",
 };
 
+// PERBAIKAN: Hapus snmpCommunity dari interface
 interface NodeFormInput {
   name: string;
   ip: string;
   location: string;
-  snmpCommunity?: string;
 }
 
 interface NodesClientPageProps {
@@ -94,70 +94,27 @@ interface NodesClientPageProps {
 }
 
 export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPageProps) {
-  // BARU: State lokal untuk menampung data dari provider
   const { sortBy, sortOrder, handleSort } = useTableSorting('name', 'asc');
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
-  // BARU: Ambil data yang sudah diproses dari WebSocketProvider
-  const { nodesData, isConnected } = useWS();
-
-  // State lainnya tetap sama
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<NodeStatus | "all">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [newNode, setNewNode] = useState<NodeFormInput>({ name: "", ip: "", location: "", snmpCommunity: "public" });
+  // PERBAIKAN: Hapus snmpCommunity dari state
+  const [newNode, setNewNode] = useState<NodeFormInput>({ name: "", ip: "", location: "" });
   const [nodeForGuide, setNodeForGuide] = useState<Node | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editedNode, setEditedNode] = useState<Partial<NodeFormInput> | null>(null);
   const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null);
   const { data: session } = useSession();
-
-  // BARU: useEffect ini menyinkronkan data dari provider ke state lokal
-  useEffect(() => {
-    if (nodesData.length > 0) {
-      setNodes(nodesData);
-      setIsLoading(false);
-    }
-    // Jika koneksi WS ada tapi data kosong (misal baru connect), set loading true
-    if (isConnected && nodesData.length === 0) {
-      setIsLoading(true);
-    }
-  }, [nodesData, isConnected]);
-
-  // DIHAPUS: Semua logika fetch dan useEffect untuk `lastMessage` dihapus dari sini.
-  // Provider yang akan menanganinya.
-
-  const fetchNodes = useCallback(async () => {
-    try {
-      const response = await fetch("/api/nodes");
-      if (!response.ok) throw new Error("Failed to reload node data.");
-      const data = await response.json();
-
-      // PERBAIKAN: Beri tipe eksplisit pada parameter 'node'
-      const typedData: Node[] = data.map((node: Node) => ({
-        ...node,
-        createdAt: new Date(node.createdAt),
-        updatedAt: new Date(node.updatedAt),
-        lastSeen: node.lastSeen ? new Date(node.lastSeen) : null,
-        deletionStartedAt: node.deletionStartedAt ? new Date(node.deletionStartedAt) : null,
-      }));
-      setNodes(typedData);
-    } catch (error) {
-      if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  }, [toast]);
-
+  const { nodesData: nodes, isConnected } = useWS();
 
   useEffect(() => {
     if (nodeForGuide) setIsGuideModalOpen(true);
   }, [nodeForGuide]);
 
-  // Semua logika `useMemo` tidak berubah, karena sudah benar
   const nodeStats = useMemo(() => {
     const statusCounts = { ONLINE: 0, OFFLINE: 0, UNKNOWN: 0, ERROR: 0, DELETING: 0 };
     let totalCpu = 0;
@@ -221,7 +178,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
     return filtered;
   }, [nodes, searchTerm, filterStatus, sortBy, sortOrder]);
 
-  // Semua handler (add, edit, delete, sort) tidak berubah, tapi mereka memanggil `fetchNodes` untuk sinkronisasi
   const handleProceedToGuide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNode.name.trim() || !newNode.ip.trim()) {
@@ -237,7 +193,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       toast({ title: "Success", description: "Node saved successfully. Continue to installation guide." });
       setIsAddModalOpen(false);
       setNodeForGuide(createdNode);
-      fetchNodes(); // Ambil data terbaru setelah berhasil menambah
     } catch (error) {
       if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -247,7 +202,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
 
   const startEditing = (node: Node) => {
     setEditingNodeId(node.id);
-    setEditedNode({ name: node.name, ip: node.ip, location: node.location ?? "", snmpCommunity: node.snmpCommunity ?? "" });
+    // PERBAIKAN: Hapus snmpCommunity dari state edit
+    setEditedNode({ name: node.name, ip: node.ip, location: node.location ?? "" });
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,7 +219,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       toast({ title: "Success", description: "Node updated successfully!" });
       setEditingNodeId(null);
       setEditedNode(null);
-      fetchNodes();
     } catch (error) {
       if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -289,7 +244,6 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.message || "Failed to delete node.");
       toast({ title: "Success", description: responseData.message });
-      fetchNodes();
     } catch (error) {
       if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -298,8 +252,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       setNodeToDelete(null);
     }
   };
+  const isLoading = !isConnected && nodes.length === 0;
 
-  // Render method tidak berubah
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -308,7 +262,8 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
           <p className="text-gray-600">Manage and monitor your OpenVPN server nodes</p>
         </div>
         {session?.user?.role === 'ADMIN' && (
-          <Button onClick={() => { setNewNode({ name: "", ip: "", location: "", snmpCommunity: "public" }); setIsAddModalOpen(true); }}>
+          // PERBAIKAN: Hapus snmpCommunity dari reset state
+          <Button onClick={() => { setNewNode({ name: "", ip: "", location: "" }); setIsAddModalOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" /> Add Node
           </Button>
         )}
@@ -422,13 +377,16 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
                   filteredAndSortedNodes.map((node) => (
                     <TableRow key={node.id}>
                       <TableCell className="font-medium">
-                        {editingNodeId === node.id ? <Input name="name" value={editedNode?.name || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.name}
+                        {/* PERBAIKAN: Tambah maxLength untuk edit nama */}
+                        {editingNodeId === node.id ? <Input name="name" value={editedNode?.name || ""} onChange={handleEditChange} disabled={isSubmitting} maxLength={32} /> : node.name}
                       </TableCell>
                       <TableCell>
-                        {editingNodeId === node.id ? <Input name="ip" value={editedNode?.ip || ""} onChange={handleEditChange} disabled={isSubmitting} /> : node.ip}
+                        {/* PERBAIKAN: Tambah maxLength untuk edit IP */}
+                        {editingNodeId === node.id ? <Input name="ip" value={editedNode?.ip || ""} onChange={handleEditChange} disabled={isSubmitting} maxLength={45} /> : node.ip}
                       </TableCell>
                       <TableCell>
-                        {editingNodeId === node.id ? <Input name="location" value={editedNode?.location || ""} onChange={handleEditChange} disabled={isSubmitting} /> : <>{node.flag} {node.location}</>}
+                        {/* PERBAIKAN: Tambah maxLength untuk edit lokasi */}
+                        {editingNodeId === node.id ? <Input name="location" value={editedNode?.location || ""} onChange={handleEditChange} disabled={isSubmitting} maxLength={64} /> : <>{node.flag} {node.location}</>}
                       </TableCell>
                       <TableCell>
                         {(() => {
@@ -520,10 +478,13 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
               <DialogHeader><DialogTitle>Add New Node</DialogTitle><DialogDescription>Enter the details for the new server node. After saving, you will be guided through the installation.</DialogDescription></DialogHeader>
               <form onSubmit={handleProceedToGuide}>
                 <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name</Label><Input id="name" value={newNode.name} onChange={(e) => setNewNode({ ...newNode, name: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="ip" className="text-right">IP Address</Label><Input id="ip" value={newNode.ip} onChange={(e) => setNewNode({ ...newNode, ip: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="location" className="text-right">Location</Label><Input id="location" value={newNode.location} onChange={(e) => setNewNode({ ...newNode, location: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
-                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="snmpCommunity" className="text-right">SNMP Community</Label><Input id="snmpCommunity" value={newNode.snmpCommunity} onChange={(e) => setNewNode({ ...newNode, snmpCommunity: e.target.value })} className="col-span-3" disabled={isSubmitting} /></div>
+                  {/* PERBAIKAN: Tambah maxLength untuk input nama */}
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name</Label><Input id="name" value={newNode.name} onChange={(e) => setNewNode({ ...newNode, name: e.target.value })} className="col-span-3" disabled={isSubmitting} maxLength={32} /></div>
+                  {/* PERBAIKAN: Tambah maxLength untuk input IP */}
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="ip" className="text-right">IP Address</Label><Input id="ip" value={newNode.ip} onChange={(e) => setNewNode({ ...newNode, ip: e.target.value })} className="col-span-3" disabled={isSubmitting} maxLength={45} /></div>
+                  {/* PERBAIKAN: Tambah maxLength untuk input lokasi */}
+                  <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="location" className="text-right">Location</Label><Input id="location" value={newNode.location} onChange={(e) => setNewNode({ ...newNode, location: e.target.value })} className="col-span-3" disabled={isSubmitting} maxLength={64} /></div>
+                  {/* DIHAPUS: Input untuk SNMP Community */}
                 </div>
                 <DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting && (<Loader2 className="mr-2 h-4 w-4 animate-spin" />)} Proceed to Guide</Button></DialogFooter>
               </form>

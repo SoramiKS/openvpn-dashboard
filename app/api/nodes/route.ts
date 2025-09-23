@@ -10,6 +10,8 @@ import { subMinutes } from "date-fns";
 const OFFLINE_THRESHOLD_MS = 90 * 1000; // Consider offline if no report > 90 seconds
 const DELETION_CLEANUP_MINUTES = 1; // Permanently delete after 1 minute
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);

@@ -1,3 +1,4 @@
+// server.js
 const { createServer } = require("http");
 const next = require("next");
 const { WebSocketServer } = require("ws");
@@ -32,13 +33,6 @@ app.prepare().then(() => {
         wss.emit("connection", ws, req)
       );
     }
-    // --- PERBAIKAN DI SINI ---
-    // Hapus blok 'else' agar tidak menghancurkan koneksi lain seperti HMR
-    /*
-    else {
-      socket.destroy(); 
-    }
-    */
   });
 
   wss.on("connection", (ws, req) => {

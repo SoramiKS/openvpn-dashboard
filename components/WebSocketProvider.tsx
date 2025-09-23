@@ -83,7 +83,7 @@ export const WebSocketProvider = ({ children }: { readonly children: React.React
   useEffect(() => {
     fetchInitialNodes();
 
-    const wsPort = process.env.NODE_ENV === 'development' ? '3001' : window.location.port;
+    const wsPort = window.location.port;
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsUrl = `${wsProtocol}://${window.location.hostname}:${wsPort}/ws?type=frontend`;
     const ws = new WebSocket(wsUrl);
@@ -96,7 +96,6 @@ export const WebSocketProvider = ({ children }: { readonly children: React.React
       setLastMessage(event);
       try {
         const msg: WSMessage = JSON.parse(event.data);
-        // PENINGKATAN: Panggil fungsi helper agar tidak ada nesting berlebih
         setNodesData(prevNodes => updateNodesDataWithMessage(prevNodes, msg));
       } catch (err) {
         console.error("Failed to parse WS message", err);

@@ -1,11 +1,11 @@
 // app/api/nodes/[id]/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { Prisma, ActionType, NodeStatus, ActionStatus } from "@prisma/client";
 
+// helper buat check role ADMIN
 async function checkAdminSession() {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== "ADMIN") {
@@ -14,100 +14,182 @@ async function checkAdminSession() {
   return null;
 }
 
-// PUT handler unchanged
-export async function PUT(request: NextRequest) {
+// ========== PUT ==========
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> } // ✅ Perbaikan: Tambahkan Promise
+) {
   const denied = await checkAdminSession();
   if (denied) return denied;
 
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { message: "User session not found." },
+      { status: 401 }
+    );
+  }
+
   try {
-    const nodeId = request.nextUrl.pathname.split("/").pop();
-    if (!nodeId) {
-      return NextResponse.json({ message: "Node ID not found in URL." }, { status: 400 });
+    const params = await context.params; // ✅ AWAIT params
+    const nodeId = params.id;           // ✅ Gunakan params.id
+
+    const { newData, originalData } = await request.json();
+
+    if (!newData?.name?.trim() || !newData?.ip?.trim()) {
+      return NextResponse.json(
+        { message: "Node name and IP are required." },
+        { status: 400 }
+      );
     }
-    const body = await request.json();
-    const { name, ip, location, snmpCommunity } = body;
-    if (!name?.trim() || !ip?.trim()) {
-      return NextResponse.json({ message: "Node name and IP are required." }, { status: 400 });
-    }
-    const updatedNode = await prisma.node.update({
-      where: { id: nodeId },
-      data: { name, ip, location, snmpCommunity },
+
+    const updatedNode = await prisma.$transaction(async (tx) => {
+      const nodeBeforeUpdate = await tx.node.findUnique({
+        where: { id: nodeId },
+      });
+
+      if (!nodeBeforeUpdate) throw new Error("P2025");
+
+      const updated = await tx.node.update({
+        where: { id: nodeId },
+        data: {
+          name: newData.name,
+          ip: newData.ip,
+          location: newData.location,
+        },
+      });
+
+      await tx.actionLog.create({
+        data: {
+          action: ActionType.UPDATE_NODE,
+          status: ActionStatus.COMPLETED,
+          details: `Node '${originalData.name}' updated. Name: '${originalData.name}' -> '${newData.name}', IP: '${originalData.ip}' -> '${newData.ip}', Location: '${originalData.location}' -> '${newData.location}'`,
+          nodeId,
+          initiatorId: session.user.id,
+          nodeNameSnapshot: nodeBeforeUpdate.name,
+        },
+      });
+
+      return updated;
     });
-    return NextResponse.json({ message: "Node updated successfully.", node: updatedNode }, { status: 200 });
+
+    return NextResponse.json(
+      { message: "Node updated successfully.", node: updatedNode },
+      { status: 200 }
+    );
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") return NextResponse.json({ message: "Node not found." }, { status: 404 });
-      if (error.code === "P2002") return NextResponse.json({ message: "A node with this name or IP already exists." }, { status: 409 });
+      if (error.code === "P2025") {
+        return NextResponse.json({ message: "Node not found." }, { status: 404 });
+      }
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          { message: "A node with this name or IP already exists." },
+          { status: 409 }
+        );
+      }
     }
-    return NextResponse.json({ message: "Internal server error occurred." }, { status: 500 });
+
+    console.error("Error updating node:", error);
+    return NextResponse.json(
+      { message: "Internal server error occurred." },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE handler with "Smart Delete" and "Soft Delete" logic
-export async function DELETE(request: NextRequest) {
+// ========== DELETE ==========
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> } // ✅ Perbaikan: Tambahkan Promise
+) {
   const denied = await checkAdminSession();
   if (denied) return denied;
 
   try {
-    const nodeIdToDelete = request.nextUrl.pathname.split("/").pop();
+    const params = await context.params; // ✅ AWAIT params
+    const nodeIdToDelete = params.id;   // ✅ Gunakan params.id
+
     if (!nodeIdToDelete) {
-      return NextResponse.json({ message: "Node ID not found in URL." }, { status: 400 });
+      return NextResponse.json(
+        { message: "Node ID not found in URL." },
+        { status: 400 }
+      );
     }
 
-    const node = await prisma.node.findUnique({ where: { id: nodeIdToDelete } });
+    const node = await prisma.node.findUnique({
+      where: { id: nodeIdToDelete },
+    });
     if (!node) {
       return NextResponse.json({ message: "Node not found." }, { status: 404 });
     }
 
     const session = await getServerSession(authOptions);
-
-    // --- TAMBAHKAN BLOK INI ---
-    // Buat log SEBELUM melakukan aksi hapus
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ message: "Session or user ID not found." }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { message: "Session or user ID not found." },
+        { status: 401 }
+      );
     }
+
+    // Log awal sebelum delete
     await prisma.actionLog.create({
       data: {
         action: ActionType.DELETE_NODE,
         status: ActionStatus.COMPLETED,
         details: `Deletion initiated for node '${node.name}'.`,
         nodeId: nodeIdToDelete,
-        initiatorId: session.user.id, // Kita tahu sesi ada dari checkAdminSession
+        initiatorId: session.user.id,
         nodeNameSnapshot: node.name,
-      }
+      },
     });
-    // --- AKHIR BLOK TAMBAHAN ---
 
-    // If node is ONLINE, send self-destruct command and start soft delete
     if (node.status === NodeStatus.ONLINE) {
+      // Soft delete
       await prisma.actionLog.create({
         data: {
           nodeId: nodeIdToDelete,
           action: ActionType.DECOMMISSION_AGENT,
-          status: "PENDING",
+          status: ActionStatus.PENDING,
           details: `Self-deletion command sent to agent on node ${node.name}.`,
           nodeNameSnapshot: node.name,
         },
       });
-      // Change status to DELETING and record the timestamp
+
       const updatedNode = await prisma.node.update({
         where: { id: nodeIdToDelete },
         data: {
           status: NodeStatus.DELETING,
-          deletionStartedAt: new Date() // Record when deletion started
+          deletionStartedAt: new Date(),
         },
       });
-      return NextResponse.json({ message: `Deletion process for node ${node.name} has started.`, node: updatedNode }, { status: 200 });
+
+      return NextResponse.json(
+        {
+          message: `Deletion process for node ${node.name} has started.`,
+          node: updatedNode,
+        },
+        { status: 200 }
+      );
     } else {
-      // If node is OFFLINE or UNKNOWN, delete directly from DB (Hard Delete)
+      // Hard delete
       await prisma.node.delete({ where: { id: nodeIdToDelete } });
-      return NextResponse.json({ message: `Inactive node ${node.name} has been permanently deleted.` }, { status: 200 });
+      return NextResponse.json(
+        { message: `Inactive node ${node.name} has been permanently deleted.` },
+        { status: 200 }
+      );
     }
   } catch (error: unknown) {
     console.error("Error while deleting node:", error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
       return NextResponse.json({ message: "Node not found." }, { status: 404 });
     }
-    return NextResponse.json({ message: "Internal server error occurred." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error occurred." },
+      { status: 500 }
+    );
   }
 }

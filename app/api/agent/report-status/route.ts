@@ -4,13 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { NodeStatus, Prisma } from "@prisma/client";
 
+
+
 export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get('Authorization'); // Gunakan 'request' dari parameter fungsi
         const agentApiKey = process.env.AGENT_API_KEY;
 
         if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== agentApiKey) {
-          return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
         const body = await request.json();
         const { serverId, serviceStatus, activeUsers = [], cpuUsage, ramUsage } = body;
@@ -67,14 +69,14 @@ export async function POST(request: NextRequest) {
             const message = JSON.stringify({
                 type: "NODE_STATUS_UPDATE",
                 payload: updatePayload,
-            }); // Kirim pesan ke semua klien yang terhubung
+            });
 
             global._webSocketServer.clients.forEach((client) => {
                 if (client.readyState === 1) {
                     client.send(message);
                 }
             });
-        } // --- AKHIR BAGIAN BARU ---
+        }
         console.log(
             `Node ${serverId} status report processed, with ${activeUsers.length} active user(s).`
         );

@@ -39,7 +39,6 @@ export default function ProfilesClient() {
   const [totalRevoked, setTotalRevoked] = useState(0);
   const [nodes, setNodes] = useState<NodeForSelect[]>([]);
   const [isLoading, setIsLoading] = useState({ valid: true, revoked: true });
-  // PERBAIKAN: Tambahkan setIsSubmitting
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [validUsersFilter, setValidUsersFilter] = useState<Omit<FilterState, 'status'>>({ searchTerm: "", nodeId: "all" });
@@ -126,6 +125,10 @@ export default function ProfilesClient() {
     if (!newProfile.username.trim() || !newProfile.nodeId) {
       return toast({ title: "Input Error", description: "Username and Node are required.", variant: "destructive" });
     }
+    // PERBAIKAN: Tambahkan validasi Regex di sini untuk keamanan tambahan
+    if (!/^[a-zA-Z0-9_-]+$/.test(newProfile.username)) {
+      return toast({ title: "Input Error", description: "Username contains invalid characters.", variant: "destructive" });
+    }
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/profiles", {
@@ -135,7 +138,7 @@ export default function ProfilesClient() {
       });
       if (!response.ok) throw new Error((await response.json()).message || "Failed to create profile");
       toast({ title: "Success", description: "VPN profile creation has started!" });
-      fetchProfiles('active', 1, validUsersFilter, validSortBy, validSortOrder);
+      fetchProfiles('active', 1, { searchTerm: "", nodeId: "all" }, 'username', 'asc');
       setNewProfile({ username: "", nodeId: "" });
       setIsAddModalOpen(false);
     } catch (error) {
@@ -160,7 +163,7 @@ export default function ProfilesClient() {
       setIsRevokeModalOpen(false);
       setUserToRevoke(null);
       fetchProfiles('active', validUsersPage, validUsersFilter, validSortBy, validSortOrder);
-      fetchProfiles('revoked', revokedUsersPage, revokedUsersFilter, revokedSortBy, revokedSortOrder);
+      fetchProfiles('revoked', 1, revokedUsersFilter, revokedSortBy, revokedSortOrder);
     } catch (error) {
       if (error instanceof Error) toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -186,6 +189,9 @@ export default function ProfilesClient() {
 
   const totalValidPages = Math.ceil(totalValid / PROFILES_PER_PAGE) || 1;
   const totalRevokedPages = Math.ceil(totalRevoked / PROFILES_PER_PAGE) || 1;
+
+  // PERBAIKAN 2: Siapkan data node yang terpilih untuk ditampilkan di tombol
+  const selectedNode = nodes.find(n => n.id === newProfile.nodeId);
 
   return (
     <div className="space-y-6 p-6">
@@ -230,8 +236,6 @@ export default function ProfilesClient() {
         isRevokedTable={true}
       />
 
-      {/* PERBAIKAN: Hapus tabel duplikat dari sini */}
-
       {/* Dialogs */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -242,14 +246,33 @@ export default function ProfilesClient() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="username" className="text-right">Username</Label>
-              <Input id="username" value={newProfile.username} onChange={(e) => setNewProfile({ ...newProfile, username: e.target.value })} className="col-span-3" disabled={isSubmitting} />
+              {/* PERBAIKAN 1: Batasi panjang dan format username */}
+              <Input
+                id="username"
+                value={newProfile.username}
+                onChange={(e) => {
+                  const formatted = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
+                  setNewProfile({ ...newProfile, username: formatted });
+                }}
+                maxLength={32}
+                className="col-span-3"
+                disabled={isSubmitting}
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="node" className="text-right">Node</Label>
               <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" aria-expanded={isComboboxOpen} className="col-span-3 justify-between font-normal">
-                    {newProfile.nodeId ? nodes.find(n => n.id === newProfile.nodeId)?.name : "Select Node..."}
+                  <Button variant="outline" aria-expanded={isComboboxOpen} className="col-span-3 justify-between font-normal text-left h-auto">
+                    {/* PERBAIKAN 3: Tampilkan nama node (truncate jika perlu) dan IP pada tombol */}
+                    {selectedNode ? (
+                      <div className="flex flex-col items-start">
+                        <span className="truncate max-w-[180px]">{selectedNode.name}</span>
+                        <span className="text-xs text-muted-foreground">{selectedNode.ip}</span>
+                      </div>
+                    ) : (
+                      "Select Node..."
+                    )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -259,6 +282,7 @@ export default function ProfilesClient() {
                     <CommandList>
                       <CommandEmpty>No node found.</CommandEmpty>
                       <CommandGroup>
+                        {/* CATATAN: Bagian ini sudah benar menampilkan nama (truncate) dan IP di dalam list */}
                         {nodes.map((node) => (
                           <CommandItem key={node.id} value={`${node.name} ${node.ip}`} onSelect={() => { setNewProfile({ ...newProfile, nodeId: node.id }); setIsComboboxOpen(false); }}>
                             <Check className={cn("mr-2 h-4 w-4", newProfile.nodeId === node.id ? "opacity-100" : "opacity-0")} />

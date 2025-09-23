@@ -39,11 +39,10 @@ enum VpnCertificateStatus {
 enum ActionType {
   CREATE_USER
   REVOKE_USER
-  RESTART_NODE
-  GET_LATEST_OVPN
   DECOMMISSION_AGENT
   CREATE_NODE
   DELETE_NODE
+  UPDATE_NODE
 }
 
 enum ActionStatus {
