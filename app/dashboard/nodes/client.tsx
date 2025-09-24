@@ -214,7 +214,25 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
     if (!editedNode || !editingNodeId) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/nodes/${editingNodeId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editedNode) });
+      // ✅ PERBAIKAN: Kirim originalData untuk konsistensi
+      const originalNode = nodes.find(n => n.id === editingNodeId);
+      if (!originalNode) {
+        throw new Error("Original node not found");
+      }
+
+      const response = await fetch(`/api/nodes/${editingNodeId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newData: editedNode,
+          originalData: {
+            name: originalNode.name,
+            ip: originalNode.ip,
+            location: originalNode.location,
+          }
+        })
+      });
+
       if (!response.ok) throw new Error((await response.json()).message || "Failed to update node.");
       toast({ title: "Success", description: "Node updated successfully!" });
       setEditingNodeId(null);
@@ -337,7 +355,7 @@ export default function NodesClientPage({ apiKey, dashboardUrl }: NodesClientPag
       <Card>
         <CardHeader><CardTitle>Filter Nodes</CardTitle></CardHeader>
         <CardContent className="flex flex-col md:flex-row gap-4">
-          <Input placeholder="Search by name or IP..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="flex-grow" />
+          <Input placeholder="Search by name or IP..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="flex-grow" maxLength={250}/>
           <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as NodeStatus | "all")}>
             <SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder="Filter by status" /></SelectTrigger>
             <SelectContent>

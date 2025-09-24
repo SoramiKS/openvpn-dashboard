@@ -18,7 +18,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen">
-      <div className="hidden md:flex md:w-64 md:flex-col">
+      <div className="hidden md:flex md:w-[200px] md:flex-col">
         <div className="flex flex-col flex-grow shadow-sm">
           <Sidebar className="flex-grow" />
         </div>

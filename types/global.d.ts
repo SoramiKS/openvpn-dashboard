@@ -1,5 +1,5 @@
 // types/global.d.ts
-
+declare module "*.css";
 // Memberitahu TypeScript untuk menambahkan properti baru ke tipe Window global
 declare global {
   interface Window {

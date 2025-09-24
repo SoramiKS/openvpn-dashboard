@@ -177,7 +177,7 @@ export default function LogsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card id="recent-activity">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
           <div className="flex flex-col md:flex-row gap-4 pt-4">
@@ -242,13 +242,20 @@ export default function LogsPage() {
               {!isLoading.action && actionLogs.length > 0 && (
                 actionLogs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
-                    <TableCell>
-                      {log.node ? log.node.name : <span className="text-gray-400 italic">{log.nodeNameSnapshot || "[Node Deleted]"}</span>}
+                    <TableCell className="max-w-[100px]">{new Date(log.createdAt).toLocaleString()}</TableCell>
+                    <TableCell
+                    className="max-w-[150px] break-words"
+                      title={log.node?.name || log.nodeNameSnapshot || undefined}
+                    >
+                      {log.node ? log.node.name : log.nodeNameSnapshot || "[Node Deleted]"}
                     </TableCell>
                     <TableCell>{log.action}</TableCell>
-                    <TableCell><Badge variant={getLogStatusBadgeVariant(log.status)}>{log.status}</Badge></TableCell>
-                    <TableCell className="max-w-md truncate" title={log.message || log.details || ""}>
+
+                    <TableCell><Badge className="truncate" variant={getLogStatusBadgeVariant(log.status)}>{log.status}</Badge></TableCell>
+                    <TableCell
+                      className="min-w-[200px] overflow-hidden"
+                      title={log.vpnUser?.username ? `User: ${log.vpnUser.username}` : log.details || undefined}
+                    >
                       {log.vpnUser?.username ? `User: ${log.vpnUser.username}` : log.details}
                       {log.message && ` - ${log.message}`}
                     </TableCell>
@@ -262,15 +269,29 @@ export default function LogsPage() {
         {totalActionLogPages > 1 && <CardFooter>
           <Pagination>
             <PaginationContent>
-              <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage > 1) setActionLogPage(actionLogPage - 1); }} /></PaginationItem>
-              <PaginationItem><PaginationLink href="#">{actionLogPage} / {totalActionLogPages}</PaginationLink></PaginationItem>
-              <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (actionLogPage < totalActionLogPages) setActionLogPage(actionLogPage + 1); }} /></PaginationItem>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#recent-activity"
+                  onClick={() => { if (actionLogPage > 1) setActionLogPage(actionLogPage - 1); }}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#recent-activity">
+                  {actionLogPage} / {totalActionLogPages}
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#recent-activity"
+                  onClick={() => { if (actionLogPage < totalActionLogPages) setActionLogPage(actionLogPage + 1); }}
+                />
+              </PaginationItem>
             </PaginationContent>
           </Pagination>
         </CardFooter>}
       </Card>
 
-      <Card>
+      <Card id="user-activity">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>User Activity</CardTitle>
@@ -382,9 +403,23 @@ export default function LogsPage() {
         {totalVpnActivityLogPages > 1 && <CardFooter>
           <Pagination>
             <PaginationContent>
-              <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage > 1) setVpnActivityLogPage(vpnActivityLogPage - 1); }} /></PaginationItem>
-              <PaginationItem><PaginationLink href="#">{vpnActivityLogPage} / {totalVpnActivityLogPages}</PaginationLink></PaginationItem>
-              <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (vpnActivityLogPage < totalVpnActivityLogPages) setVpnActivityLogPage(vpnActivityLogPage + 1); }} /></PaginationItem>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#user-activity"
+                  onClick={() => { if (vpnActivityLogPage > 1) setVpnActivityLogPage(vpnActivityLogPage - 1); }}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#user-activity">
+                  {vpnActivityLogPage} / {totalVpnActivityLogPages}
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#user-activity"
+                  onClick={() => { if (vpnActivityLogPage < totalVpnActivityLogPages) setVpnActivityLogPage(vpnActivityLogPage + 1); }}
+                />
+              </PaginationItem>
             </PaginationContent>
           </Pagination>
         </CardFooter>}

@@ -32,16 +32,35 @@ export async function GET(req: NextRequest) {
       whereClause.timestamp = timestampFilter;
     }
 
+    // ================== PERBAIKAN DIMULAI DI SINI ==================
     const allowedSortBy = ['timestamp', 'action', 'username', 'publicIp', 'vpnIp', 'bytesReceived', 'bytesSent'];
-    const orderBy: Prisma.VpnActivityLogOrderByWithRelationInput =
-      allowedSortBy.includes(sortBy) ? { [sortBy]: sortOrder } : { timestamp: 'desc' };
+    let orderBy: Prisma.VpnActivityLogOrderByWithRelationInput | Prisma.VpnActivityLogOrderByWithRelationInput[];
+
+    if (sortBy === 'bytesReceived' || sortBy === 'bytesSent') {
+      // Jika sorting berdasarkan byte, tangani NULL secara eksplisit
+      // asc: kecil ke besar (NULL/0 di atas)
+      // desc: besar ke kecil (NULL/0 di bawah)
+      orderBy = {
+        [sortBy]: {
+          sort: sortOrder as 'asc' | 'desc',
+          nulls: sortOrder === 'asc' ? 'first' : 'last', // Ini kuncinya!
+        },
+      };
+    } else if (allowedSortBy.includes(sortBy)) {
+      // Untuk kolom lain, sorting biasa sudah cukup
+      orderBy = { [sortBy]: sortOrder as 'asc' | 'desc' };
+    } else {
+      // Default sorting
+      orderBy = { timestamp: 'desc' };
+    }
+    // =================== PERBAIKAN SELESAI DI SINI ===================
 
     const [activityLogs, totalLogs] = await prisma.$transaction([
       prisma.vpnActivityLog.findMany({
         where: whereClause,
         skip,
         take: pageSize,
-        orderBy,
+        orderBy, // Gunakan objek orderBy yang sudah diperbaiki
         include: { node: { select: { name: true } } },
       }),
       prisma.vpnActivityLog.count({ where: whereClause }),

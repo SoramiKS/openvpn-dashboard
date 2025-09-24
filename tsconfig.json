@@ -22,6 +22,14 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["types/next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "dev-server.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    ".next/types/**/*.ts",
+    "dev-server.js",
+    "types"
+  ],
   "exclude": ["node_modules"]
 }

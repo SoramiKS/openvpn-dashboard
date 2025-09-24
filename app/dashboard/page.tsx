@@ -494,7 +494,7 @@ export default function DashboardPage() {
                   <CardTitle>Recent Activities</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-4 overflow-hidden">
                     {recentLogs.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         No recent activities.

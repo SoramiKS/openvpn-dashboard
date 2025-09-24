@@ -104,10 +104,11 @@ export function Sidebar({ className, onLinkClick }: SidebarProps) {
             className="hover:bg-accent hover:text-accent-foreground p-2 rounded-md flex items-center"
             onClick={onLinkClick}
           >
-            <div className="flex items-center">
+            <div className="flex flex-col">
               <span>Logged in as:</span>
-              <span className="font-semibold ml-1 truncate">{session.user.email}</span>
+              <span className="font-semibold break-all">{session.user.email}</span>
             </div>
+
           </Link>
         </div>
       )}

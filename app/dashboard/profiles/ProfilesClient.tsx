@@ -208,6 +208,7 @@ export default function ProfilesClient() {
       </div>
 
       <ProfileTable
+        id="active-user"
         title="Active User Profiles"
         profiles={validProfiles}
         isLoading={isLoading.valid}
@@ -223,6 +224,7 @@ export default function ProfilesClient() {
       <div className="pt-8" />
 
       <ProfileTable
+        id="revoked-user"
         title="Revoked & Expired Profiles"
         profiles={revokedProfiles}
         isLoading={isLoading.revoked}

@@ -24,6 +24,7 @@ type FilterState = {
 };
 
 interface ProfileTableProps {
+    id: string;
     title: string;
     profiles: ExtendedVpnUser[];
     isLoading: boolean;
@@ -64,6 +65,7 @@ const getCertificateStatusBadgeVariant = (status: VpnCertificateStatus) => {
 };
 
 export const ProfileTable = ({
+    id,
     title,
     profiles,
     isLoading,
@@ -79,7 +81,7 @@ export const ProfileTable = ({
     const { data: session } = useSession();
 
     return (
-        <Card>
+        <Card id={id}>
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
                 <div className="flex flex-col md:flex-row gap-4 pt-4">
@@ -91,6 +93,7 @@ export const ProfileTable = ({
                             pagination.setPage(1);
                         }}
                         className="flex-grow"
+                        maxLength={250}
                     />
                     <Select value={filterState.nodeId} onValueChange={(value) => { onFilterChange({ ...filterState, nodeId: value }); pagination.setPage(1); }}>
                         <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by Node" /></SelectTrigger>
@@ -181,9 +184,33 @@ export const ProfileTable = ({
                 <CardFooter>
                     <Pagination>
                         <PaginationContent>
-                            <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (pagination.currentPage > 1) pagination.setPage(pagination.currentPage - 1); }} /></PaginationItem>
-                            <PaginationItem><PaginationLink href="#">{pagination.currentPage} / {pagination.totalPages}</PaginationLink></PaginationItem>
-                            <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (pagination.currentPage < pagination.totalPages) pagination.setPage(pagination.currentPage + 1); }} /></PaginationItem>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    href={`#${id}`}
+                                    onClick={() => {
+                                        if (pagination.currentPage > 1) {
+                                            pagination.setPage(pagination.currentPage - 1);
+                                        }
+                                    }}
+                                />
+                            </PaginationItem>
+
+                            <PaginationItem>
+                                <PaginationLink href={`#${id}`}>
+                                    {pagination.currentPage} / {pagination.totalPages}
+                                </PaginationLink>
+                            </PaginationItem>
+
+                            <PaginationItem>
+                                <PaginationNext
+                                    href={`#${id}`}
+                                    onClick={() => {
+                                        if (pagination.currentPage < pagination.totalPages) {
+                                            pagination.setPage(pagination.currentPage + 1);
+                                        }
+                                    }}
+                                />
+                            </PaginationItem>
                         </PaginationContent>
                     </Pagination>
                 </CardFooter>

@@ -17,7 +17,7 @@ async function checkAdminSession() {
 // ========== PUT ==========
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> } // ✅ Perbaikan: Tambahkan Promise
+  context: { params: Promise<{ id: string }> }
 ) {
   const denied = await checkAdminSession();
   if (denied) return denied;
@@ -31,10 +31,10 @@ export async function PUT(
   }
 
   try {
-    const params = await context.params; // ✅ AWAIT params
-    const nodeId = params.id;           // ✅ Gunakan params.id
+    const params = await context.params;
+    const nodeId = params.id;
 
-    const { newData, originalData } = await request.json();
+    const { newData } = await request.json();
 
     if (!newData?.name?.trim() || !newData?.ip?.trim()) {
       return NextResponse.json(
@@ -59,11 +59,12 @@ export async function PUT(
         },
       });
 
+      // ✅ PERBAIKAN: Gunakan nodeBeforeUpdate untuk log, bukan originalData dari frontend
       await tx.actionLog.create({
         data: {
           action: ActionType.UPDATE_NODE,
           status: ActionStatus.COMPLETED,
-          details: `Node '${originalData.name}' updated. Name: '${originalData.name}' -> '${newData.name}', IP: '${originalData.ip}' -> '${newData.ip}', Location: '${originalData.location}' -> '${newData.location}'`,
+          details: `Node '${nodeBeforeUpdate.name}' updated. Name: '${nodeBeforeUpdate.name}' -> '${newData.name}', IP: '${nodeBeforeUpdate.ip}' -> '${newData.ip}', Location: '${nodeBeforeUpdate.location}' -> '${newData.location}'`,
           nodeId,
           initiatorId: session.user.id,
           nodeNameSnapshot: nodeBeforeUpdate.name,

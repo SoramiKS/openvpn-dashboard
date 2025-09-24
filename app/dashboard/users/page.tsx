@@ -368,6 +368,7 @@ export default function UserManagementPage() {
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
               className="flex-grow"
+              maxLength={250}
             />
             <div className="flex gap-2">
               <Select
@@ -463,6 +464,7 @@ export default function UserManagementPage() {
                 setFilters((prev) => ({ ...prev, search: e.target.value }))
               }
               className="flex-grow"
+              maxLength={250}
             />
             <Select
               value={filters.role}
